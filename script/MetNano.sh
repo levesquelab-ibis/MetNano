@@ -1,49 +1,45 @@
 #!/bin/bash
 
 #------------------------------------------
-# metano_lite_filtering  --  Version 1
+# MetNano -- Version 1
 #------------------------------------------
-#------------------------------------------
+
 # Usage
+USAGE="
+-----------------------
+MetNano  --  Version 1
+-----------------------
 
-USAGE="\n
-------------------------------\n
-metano_lite_filtering  --  Version 1 - class build\n
-------------------------------\n
-\n
-DESCRIPTION\n
-metano_lite_filtering is a script to run the metagenomic analysis a MAG assembly process using provided FASTQ files from Nanopore sequencing. It is the first step to process the raw basecall data compile in one file fastQ folder\n
-\n
-USAGE\n
-./metano_lite_filtering.sh -l [association file.txt] -o [OUTPUT_DIR] -n [DIR_WITH_NANOPORE_FASTQs] -F [FORCE] -Q [QUALITY_ANALYSIS]  \n
-\n
-MANDATORY ARGUMENTS:\n
--L [file.txt]     : Path to the association file containing the barcode ID and it associated sample names \n
--o [output_dir]   : Path to the output directory where results will be stored\n
--n [input folder nanopore] : Directory containing Nanopore FASTQ files basecall
+DESCRIPTION:
+MetNano runs a metagenomic analysis pipeline using provided FASTQ files from Nanopore sequencing.
+It is the first step to process the raw basecall data compiled in one file fastQ folder
 
-OPTIONAL ARGUMENTS:\n
--f [T or F]       : Use previous folder regardeless the date (default = F)\n
--Q [T or F]       : Perform the quality check for the assembly (default = T)\n
--q [minQ]         : Nanopore quality score filtering parameter used in chopper (default  = 10)\n
--l [minlength]    : Nanopore Sequence length filtering parameter used in chopper (default  = 1000)\n
--c [confidence kraken2] : Select confidence for Kraken2 parameter (default = 0)
--d [database kraken2] : Select database for Kraken2 parameter (default = /mnt/ibis/rclevesq/DATABASES/kraken2_dbs/k2_core_nt_20251015/)
--m [matched_reads] : FASTQ file of reads matching selected genomes (default = none)
+USAGE:
+./MetNano.sh -L [association_file] -o [output_dir] -n [dir_with_nanopore_fastqs] -F [force] -Q [quality_analysis]
+MANDATORY ARGUMENTS:
+-L [association_file]  		: Path to the association file containing the barcode IDs and associated sample names
+-o [output_dir]			: Path to the output directory where results will be stored
+-n [input_folder_nanopore] 	: Directory containing Nanopore FASTQ files
 
-\n
+OPTIONAL ARGUMENTS:
+-f [T or F]    		: Use previous folder regardless of the date (default = F)
+-Q [T or F]    		: Perform the quality check on FASTQs (default = T)
+-q [minQ]      		: Nanopore quality score filtering parameter used for chopper (default  = 10)
+-l [minlength] 		: Nanopore sequence length filtering parameter used for chopper (default  = 1000)
+-c [confidence kraken2] : Confidence score used for Kraken2 (default = 0)
+-d [database kraken2] 	: Database used for Kraken2 (default = /mnt/ibis/rclevesq/DATABASES/kraken2_dbs/k2_core_nt_20251015/)
+-m [matched_reads]	: FASTQ file of reads matching selected genomes (default = none)
 
-ADDITIONAL OPTIONS:\n
--h                : Display this help message and exit\n
-\n
-EXAMPLE:\n
-./metano_lite_filtering.sh -L metadata.txt -o output_dir -n /path/to/nanopore/   -F [T] || [F] -Q [T] || [F]    \n
-\n
-AUTHORS\n
-Guillaume Nguyen and Jeff Gauthier and Anthony Piot (Levesque Lab)\n
-2026-01-07\n
+ADDITIONAL OPTIONS:
+-h                	: Display this help message and exit
+
+EXAMPLE:
+bash ./MetNano.sh -L metadata.txt -o output_dir -n /path/to/nanopore/   -F [T] || [F] -Q [T] || [F]
+
+AUTHORS:
+Guillaume Nguyen, Jeff Gauthier and Anthony Piot (Levesque Lab)
+2026-01-07
 "
-
 
 # Default values for optional parameters
 nano_dir=""
@@ -73,11 +69,11 @@ done
 
 # Ensure mandatory parameters are provided
 if [ -z "$list" ] || [ -z "$output_dir" ] ; then
-        echo "Error: Missing required arguments. check list (-L) and output_dir (-o)" 
+        echo ""
+		echo "Error: Missing required arguments. check list (-L) and output_dir (-o)"
         usage
         exit 1
 fi
-
 
 if [ -z "$FORCE" ]; then
         FORCE_SET="F"
@@ -87,7 +83,6 @@ if [ -z "$FORCE" ]; then
         echo "Force mod set according to the users settings" $FORCE_SET
 fi
 
-
 if [ -z "$readmap" ]; then
         readmap="None"
         echo "readmap default value, no reads mappings performed"
@@ -96,18 +91,13 @@ if [ -z "$readmap" ]; then
         echo "readmap set according to the users settings with fastQ file" $readmap
 fi
 
-
-
-###optional
-
-
+# Optional
 if [ -z "$qualityscore" ]; then
         qualityscore=10
         echo "default value qualityscore = 10 "
         else
         echo " qualityscore =" $qualityscore
 fi
-
 
 if [ -z "$minlength" ]; then
         minlength=1000
@@ -123,17 +113,12 @@ if [ -z "$database" ]; then
         echo " database =" $database
 fi
 
-
 if [ -z "$confidence" ]; then
         confidence=0
         echo "default value database ="  $confidence
         else
         echo " database =" $confidence
 fi
-
-
-
-
 
 # Check if user specified a dir with FASTQs
 if [ -z "$list" ]; then
@@ -142,7 +127,7 @@ if [ -z "$list" ]; then
 else
     echo ""
     echo "----------------------------------"
-    echo "Running metano_lite_filtering lite v3 in directory:"
+    echo "Running MetNano in directory:"
     echo "$nano_dir"
   # Create output directory if it doesn't exist
     echo "Creating output directory if it doesn't exist: $output_dir"
@@ -158,15 +143,13 @@ else
     echo ""
 fi
 
- 
-
 sbatch_output=$(sbatch \
     --time=0-24:00:00 \
     -c 6 --mem 400G \
     -p small,medium,large \
     -D "$(realpath "$output_dir")" \
-    -o "metano_lite_filtering-%j.log" \
-    -J "metano_lite_filtering-%j" \
+    -o "MetNano-%j.log" \
+    -J "MetNano-%j" \
     --wrap="python3 /mnt/ibis/rclevesq/software/metnano/current/src/metano_run_container.py \
     -n "$nano_dir" \
     -f "$FORCE_SET" \
@@ -189,4 +172,3 @@ sbatch_output=$(sbatch \
         echo "Error: Failed to retrieve the job ID for $sample_name"
     fi
  echo "----------------------------------"
-
