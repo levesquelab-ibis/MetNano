@@ -1,0 +1,192 @@
+#!/bin/bash
+
+#------------------------------------------
+# metano_lite_filtering  --  Version 1
+#------------------------------------------
+#------------------------------------------
+# Usage
+
+USAGE="\n
+------------------------------\n
+metano_lite_filtering  --  Version 1 - class build\n
+------------------------------\n
+\n
+DESCRIPTION\n
+metano_lite_filtering is a script to run the metagenomic analysis a MAG assembly process using provided FASTQ files from Nanopore sequencing. It is the first step to process the raw basecall data compile in one file fastQ folder\n
+\n
+USAGE\n
+./metano_lite_filtering.sh -l [association file.txt] -o [OUTPUT_DIR] -n [DIR_WITH_NANOPORE_FASTQs] -F [FORCE] -Q [QUALITY_ANALYSIS]  \n
+\n
+MANDATORY ARGUMENTS:\n
+-L [file.txt]     : Path to the association file containing the barcode ID and it associated sample names \n
+-o [output_dir]   : Path to the output directory where results will be stored\n
+-n [input folder nanopore] : Directory containing Nanopore FASTQ files basecall
+
+OPTIONAL ARGUMENTS:\n
+-f [T or F]       : Use previous folder regardeless the date (default = F)\n
+-Q [T or F]       : Perform the quality check for the assembly (default = T)\n
+-q [minQ]         : Nanopore quality score filtering parameter used in chopper (default  = 10)\n
+-l [minlength]    : Nanopore Sequence length filtering parameter used in chopper (default  = 1000)\n
+-c [confidence kraken2] : Select confidence for Kraken2 parameter (default = 0)
+-d [database kraken2] : Select database for Kraken2 parameter (default = /mnt/ibis/rclevesq/DATABASES/kraken2_dbs/k2_core_nt_20251015/)
+-m [matched_reads] : FASTQ file of reads matching selected genomes (default = none)
+
+\n
+
+ADDITIONAL OPTIONS:\n
+-h                : Display this help message and exit\n
+\n
+EXAMPLE:\n
+./metano_lite_filtering.sh -L metadata.txt -o output_dir -n /path/to/nanopore/   -F [T] || [F] -Q [T] || [F]    \n
+\n
+AUTHORS\n
+Guillaume Nguyen and Jeff Gauthier and Anthony Piot (Levesque Lab)\n
+2026-01-07\n
+"
+
+
+# Default values for optional parameters
+nano_dir=""
+
+# Function to display usage information
+usage() {
+    echo -e "$USAGE"
+    exit 1
+}
+
+# Parse arguments using getopts
+while getopts "L:o:n:f:q:l:d:c:m:h:" opt; do
+    case $opt in
+        L) list="$OPTARG" ;;
+        o) output_dir="$OPTARG" ;;
+        n) nano_dir="$OPTARG" ;;
+        f) FORCE="$OPTARG" ;;
+        q) qualityscore="$OPTARG" ;;
+        l) minlength="$OPTARG" ;;
+        d) database="$OPTARG" ;;
+        c) confidence="$OPTARG" ;;
+        m) readmap="$OPTARG" ;;
+        h) usage ;;
+        *) usage ;;
+    esac
+done
+
+# Ensure mandatory parameters are provided
+if [ -z "$list" ] || [ -z "$output_dir" ] ; then
+        echo "Error: Missing required arguments. check list (-L) and output_dir (-o)" 
+        usage
+        exit 1
+fi
+
+
+if [ -z "$FORCE" ]; then
+        FORCE_SET="F"
+        echo "F default value, new folder will be used for assembly"
+        else
+        FORCE_SET="$FORCE"
+        echo "Force mod set according to the users settings" $FORCE_SET
+fi
+
+
+if [ -z "$readmap" ]; then
+        readmap="None"
+        echo "readmap default value, no reads mappings performed"
+        else
+        readmap="$FORCE"
+        echo "readmap set according to the users settings with fastQ file" $readmap
+fi
+
+
+
+###optional
+
+
+if [ -z "$qualityscore" ]; then
+        qualityscore=10
+        echo "default value qualityscore = 10 "
+        else
+        echo " qualityscore =" $qualityscore
+fi
+
+
+if [ -z "$minlength" ]; then
+        minlength=1000
+        echo "default value qualityscore = 1000 "
+        else
+        echo " minlength =" $minlength
+fi
+
+if [ -z "$database" ]; then
+        database='/mnt/ibis/rclevesq/DATABASES/kraken2_dbs/k2_core_nt_20251015/'
+        echo "default value database ="  $database
+        else
+        echo " database =" $database
+fi
+
+
+if [ -z "$confidence" ]; then
+        confidence=0
+        echo "default value database ="  $confidence
+        else
+        echo " database =" $confidence
+fi
+
+
+
+
+
+# Check if user specified a dir with FASTQs
+if [ -z "$list" ]; then
+    echo -e "$USAGE"
+    exit 1
+else
+    echo ""
+    echo "----------------------------------"
+    echo "Running metano_lite_filtering lite v3 in directory:"
+    echo "$nano_dir"
+  # Create output directory if it doesn't exist
+    echo "Creating output directory if it doesn't exist: $output_dir"
+    mkdir -p "$output_dir"
+        echo ""
+        echo "----------------------------------"
+        echo ""
+    echo "!!! LITE MODE !!!"
+    echo "Association list file"
+    echo "$list"
+    cat "$list"
+    echo "----------------------------------"
+    echo ""
+fi
+
+ 
+
+sbatch_output=$(sbatch \
+    --time=0-24:00:00 \
+    -c 6 --mem 400G \
+    -p small,medium,large \
+    -D "$(realpath "$output_dir")" \
+    -o "metano_lite_filtering-%j.log" \
+    -J "metano_lite_filtering-%j" \
+    --wrap="python3 /mnt/ibis/rclevesq/software/metnano/current/src/metano_run_container.py \
+    -n "$nano_dir" \
+    -f "$FORCE_SET" \
+    -L "$list" \
+    -l $minlength \
+    -q $qualityscore \
+    -c $confidence \
+    -d $database \
+    -m $readmap"
+)
+         job_id=$(echo "$sbatch_output" | grep -oP 'Submitted batch job \K\d+')
+
+    if [[ -n "$job_id" ]]; then
+        # Replace %j with the actual job ID
+        echo "--- Link job $sample_name : $job_id ---"
+        echo ""
+        echo "Check hybracter_lite-$sample_name-$job_id.log to monitor progress..."
+        echo ""
+    else
+        echo "Error: Failed to retrieve the job ID for $sample_name"
+    fi
+ echo "----------------------------------"
+
