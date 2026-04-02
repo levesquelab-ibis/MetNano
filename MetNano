@@ -78,18 +78,14 @@ fi
 
 if [ -z "$FORCE" ]; then
         FORCE_SET="F"
-        #echo "F default value, new folder will be used for assembly"
         else
         FORCE_SET="$FORCE"
-        #echo "Force mod set according to the users settings" $FORCE_SET
 fi
 
 if [ -z "$readmap" ]; then
         readmap="None"
-        #echo "readmap default value, no reads mappings performed"
         else
         readmap="$FORCE"
-        #echo "readmap set according to the users settings with fastQ file" $readmap
 fi
 
 # Optional
@@ -109,7 +105,7 @@ if [ -z "$confidence" ]; then
         confidence=0.1
 fi
 
-# Check if user specified a dir with FASTQs
+# Check if user specified a FASTQ directory
 if [ -z "$list" ]; then
     echo -e "$USAGE"
     exit 1
