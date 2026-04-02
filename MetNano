@@ -78,47 +78,35 @@ fi
 
 if [ -z "$FORCE" ]; then
         FORCE_SET="F"
-        echo "F default value, new folder will be used for assembly"
+        #echo "F default value, new folder will be used for assembly"
         else
         FORCE_SET="$FORCE"
-        echo "Force mod set according to the users settings" $FORCE_SET
+        #echo "Force mod set according to the users settings" $FORCE_SET
 fi
 
 if [ -z "$readmap" ]; then
         readmap="None"
-        echo "readmap default value, no reads mappings performed"
+        #echo "readmap default value, no reads mappings performed"
         else
         readmap="$FORCE"
-        echo "readmap set according to the users settings with fastQ file" $readmap
+        #echo "readmap set according to the users settings with fastQ file" $readmap
 fi
 
 # Optional
 if [ -z "$qualityscore" ]; then
         qualityscore=10
-        echo "default value qualityscore = 10 "
-        else
-        echo " qualityscore =" $qualityscore
 fi
 
 if [ -z "$minlength" ]; then
         minlength=1000
-        echo "default value qualityscore = 1000 "
-        else
-        echo " minlength =" $minlength
 fi
 
 if [ -z "$database" ]; then
         database='/mnt/ibis/rclevesq/DATABASES/kraken2_dbs/k2_core_nt_20251015/'
-        echo "default value database ="  $database
-        else
-        echo "database =" $database
 fi
 
 if [ -z "$confidence" ]; then
-        confidence=0
-        echo "default value database ="  $confidence
-        else
-        echo "database =" $confidence
+        confidence=0.1
 fi
 
 # Check if user specified a dir with FASTQs
@@ -126,20 +114,7 @@ if [ -z "$list" ]; then
     echo -e "$USAGE"
     exit 1
 else
-    echo ""
-    echo "----------------------------------"
-    echo "Running MetNano in directory:"
-    echo "$nano_dir"
-    echo "Creating output directory if it doesn't exist: $output_dir"
     mkdir -p "$output_dir"
-    echo ""
-    echo "----------------------------------"
-    echo ""
-    echo "Association list file"
-    echo "$list"
-    cat "$list"
-    echo "----------------------------------"
-    echo ""
 fi
 
 # Move to working directory
@@ -155,17 +130,3 @@ python3 /project/rclevesq/software/metnano/anthony/MetNano/scripts/run_container
     -c $confidence \
     -d $database \
     -m $readmap
-
-job_id=$(echo "$sbatch_output" | grep -oP 'Submitted batch job \K\d+')
-
-if [[ -n "$job_id" ]]; then
-    # Replace %j with the actual job ID
-    echo "--- Link job $sample_name : $job_id ---"
-    echo ""
-    echo "Check MetNano-$sample_name-$job_id.log to monitor progress..."
-    echo ""
-else
-    echo "Error: Failed to retrieve the job ID for $sample_name"
-fi
-
-echo "----------------------------------"
