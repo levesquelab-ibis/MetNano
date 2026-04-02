@@ -142,14 +142,11 @@ else
     echo ""
 fi
 
-sbatch_output=$(sbatch \
-    --time=0-24:00:00 \
-    -c 6 --mem 400G \
-    -p small,medium,large \
-    -D "$(realpath "$output_dir")" \
-    -o "MetNano-%j.log" \
-    -J "MetNano-%j" \
-    --wrap="python3 /project/rclevesq/software/metnano/anthony/MetNano/scripts/run_container_MetNano.py \
+# Move to working directory
+cd $output_dir
+
+# Lauch MetNano pipeline
+python3 /project/rclevesq/software/metnano/anthony/MetNano/scripts/run_container_MetNano.py \
     -n "$nano_dir" \
     -f "$FORCE_SET" \
     -L "$list" \
@@ -157,8 +154,7 @@ sbatch_output=$(sbatch \
     -q $qualityscore \
     -c $confidence \
     -d $database \
-    -m $readmap"
-)
+    -m $readmap
 
 job_id=$(echo "$sbatch_output" | grep -oP 'Submitted batch job \K\d+')
 
