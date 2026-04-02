@@ -25,9 +25,9 @@ MANDATORY ARGUMENTS:
 OPTIONAL ARGUMENTS:
 -f [T or F]    		: Use previous folder regardless of the date (default = F)
 -Q [T or F]    		: Perform the quality check on FASTQs (default = T)
--q [minQ]      		: Nanopore quality score filtering parameter used for chopper (default  = 10)
--l [minlength] 		: Nanopore sequence length filtering parameter used for chopper (default  = 1000)
--c [confidence kraken2] : Confidence score used for Kraken2 (default = 0)
+-q [minQ]      		: Nanopore quality score filtering parameter used for chopper (default  = 15)
+-l [minlength] 		: Nanopore sequence length filtering parameter used for chopper (default  = 300)
+-c [confidence kraken2] : Confidence score used for Kraken2 (default = 0.1)
 -d [database kraken2] 	: Database used for Kraken2 (default = /mnt/ibis/rclevesq/DATABASES/kraken2_dbs/k2_core_nt_20251015/)
 -m [matched_reads]	: FASTQ file of reads matching selected genomes (default = none)
 
@@ -94,11 +94,11 @@ fi
 
 # Optional
 if [ -z "$qualityscore" ]; then
-        qualityscore=10
+        qualityscore=15
 fi
 
 if [ -z "$minlength" ]; then
-        minlength=1000
+        minlength=300
 fi
 
 if [ -z "$database" ]; then
