@@ -135,7 +135,6 @@ else
         echo ""
         echo "----------------------------------"
         echo ""
-    echo "!!! LITE MODE !!!"
     echo "Association list file"
     echo "$list"
     cat "$list"
@@ -166,7 +165,7 @@ sbatch_output=$(sbatch \
         # Replace %j with the actual job ID
         echo "--- Link job $sample_name : $job_id ---"
         echo ""
-        echo "Check hybracter_lite-$sample_name-$job_id.log to monitor progress..."
+        echo "Check MetNano-$job_id.log to monitor progress..." # log filename now agrees with SBATCH header log specification.
         echo ""
     else
         echo "Error: Failed to retrieve the job ID for $sample_name"
