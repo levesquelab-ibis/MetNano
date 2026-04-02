@@ -1,21 +1,22 @@
 #!/bin/bash
 
-#------------------------------------------
-# MetNano -- Version 1
-#------------------------------------------
+#---------
+# MetNano
+#---------
 
 # Usage
 USAGE="
------------------------
-MetNano  --  Version 1
------------------------
+--------
+MetNano
+--------
 
 DESCRIPTION:
 MetNano runs a metagenomic analysis pipeline using provided FASTQ files from Nanopore sequencing.
 It is the first step to process the raw basecall data compiled in one file fastQ folder
 
 USAGE:
-./MetNano.sh -L [association_file] -o [output_dir] -n [dir_with_nanopore_fastqs] -F [force] -Q [quality_analysis]
+./MetNano -L [association_file] -o [output_dir] -n [dir_with_nanopore_fastqs] -f [force] -Q [quality_analysis]
+
 MANDATORY ARGUMENTS:
 -L [association_file]  		: Path to the association file containing the barcode IDs and associated sample names
 -o [output_dir]			: Path to the output directory where results will be stored
@@ -34,7 +35,7 @@ ADDITIONAL OPTIONS:
 -h                	: Display this help message and exit
 
 EXAMPLE:
-bash ./MetNano.sh -L metadata.txt -o output_dir -n /path/to/nanopore/   -F [T] || [F] -Q [T] || [F]
+./MetNano -L metadata.txt -o output_dir -n /path/to/nanopore/ -f [T] || [F] -Q [T] || [F]
 
 AUTHORS:
 Guillaume Nguyen, Jeff Gauthier and Anthony Piot (Levesque Lab)
@@ -110,14 +111,14 @@ if [ -z "$database" ]; then
         database='/mnt/ibis/rclevesq/DATABASES/kraken2_dbs/k2_core_nt_20251015/'
         echo "default value database ="  $database
         else
-        echo " database =" $database
+        echo "database =" $database
 fi
 
 if [ -z "$confidence" ]; then
         confidence=0
         echo "default value database ="  $confidence
         else
-        echo " database =" $confidence
+        echo "database =" $confidence
 fi
 
 # Check if user specified a dir with FASTQs
@@ -129,13 +130,11 @@ else
     echo "----------------------------------"
     echo "Running MetNano in directory:"
     echo "$nano_dir"
-  # Create output directory if it doesn't exist
     echo "Creating output directory if it doesn't exist: $output_dir"
     mkdir -p "$output_dir"
-        echo ""
-        echo "----------------------------------"
-        echo ""
-    echo "!!! LITE MODE !!!"
+    echo ""
+    echo "----------------------------------"
+    echo ""
     echo "Association list file"
     echo "$list"
     cat "$list"
@@ -150,7 +149,7 @@ sbatch_output=$(sbatch \
     -D "$(realpath "$output_dir")" \
     -o "MetNano-%j.log" \
     -J "MetNano-%j" \
-    --wrap="python3 /mnt/ibis/rclevesq/software/metnano/current/src/metano_run_container.py \
+    --wrap="python3 /project/rclevesq/software/metnano/anthony/MetNano/scripts/run_container_MetNano.py \
     -n "$nano_dir" \
     -f "$FORCE_SET" \
     -L "$list" \
@@ -160,15 +159,17 @@ sbatch_output=$(sbatch \
     -d $database \
     -m $readmap"
 )
-         job_id=$(echo "$sbatch_output" | grep -oP 'Submitted batch job \K\d+')
 
-    if [[ -n "$job_id" ]]; then
-        # Replace %j with the actual job ID
-        echo "--- Link job $sample_name : $job_id ---"
-        echo ""
-        echo "Check hybracter_lite-$sample_name-$job_id.log to monitor progress..."
-        echo ""
-    else
-        echo "Error: Failed to retrieve the job ID for $sample_name"
-    fi
- echo "----------------------------------"
+job_id=$(echo "$sbatch_output" | grep -oP 'Submitted batch job \K\d+')
+
+if [[ -n "$job_id" ]]; then
+    # Replace %j with the actual job ID
+    echo "--- Link job $sample_name : $job_id ---"
+    echo ""
+    echo "Check MetNano-$sample_name-$job_id.log to monitor progress..."
+    echo ""
+else
+    echo "Error: Failed to retrieve the job ID for $sample_name"
+fi
+
+echo "----------------------------------"
