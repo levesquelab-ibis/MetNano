@@ -9,17 +9,17 @@ print("Running MetNano...", flush=True)
 # Create the parser
 parser = argparse.ArgumentParser(description="Process some parameters.")
 
-# Positional arguments (not required)
+# Positional arguments (required)
 parser.add_argument("-n", "--folder_nanopore", help="Path to the nanopore folder.")
-parser.add_argument("-f", "--force_set", help="Force set.")
 parser.add_argument("-L", "--list_association", help="association file.")
+parser.add_argument("-d", "--database", help="quality seq.")
 
 # Optional arguments with default values
 parser.add_argument("-l", "--minlength", help="minlength seq.")
 parser.add_argument("-q", "--qualityscore", help="quality seq.")
 parser.add_argument("-c", "--confidence", help="quality seq.")
-parser.add_argument("-d", "--database", help="quality seq.")
 parser.add_argument("-m", "--readmap", help="mapping to ref.")
+parser.add_argument("-f", "--force_set", help="Force set.")
 
 # Parse the arguments
 args = parser.parse_args()

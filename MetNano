@@ -15,12 +15,13 @@ MetNano runs a metagenomic analysis pipeline using provided FASTQ files from Nan
 It is the first step to process the raw basecall data compiled in one file fastQ folder
 
 USAGE:
-./MetNano -L [association_file] -o [output_dir] -n [dir_with_nanopore_fastqs] -f [force] -Q [quality_analysis]
+./MetNano -L [association_file] -o [output_dir] -n [dir_with_nanopore_fastqs] -d [kraken2_database]
 
 MANDATORY ARGUMENTS:
 -L [association_file]  		: Path to the association file containing the barcode IDs and associated sample names
 -o [output_dir]			: Path to the output directory where results will be stored
 -n [input_folder_nanopore] 	: Directory containing Nanopore FASTQ files
+-d [kraken2_database]   : Database used by Kraken2
 
 OPTIONAL ARGUMENTS:
 -f [T or F]    		: Use previous folder regardless of the date (default = F)
@@ -28,14 +29,13 @@ OPTIONAL ARGUMENTS:
 -q [minQ]      		: Nanopore quality score filtering parameter used for chopper (default  = 15)
 -l [minlength] 		: Nanopore sequence length filtering parameter used for chopper (default  = 300)
 -c [confidence kraken2] : Confidence score used for Kraken2 (default = 0.1)
--d [database kraken2] 	: Database used for Kraken2 (default = /mnt/ibis/rclevesq/DATABASES/kraken2_dbs/k2_core_nt_20251015/)
 -m [matched_reads]	: FASTQ file of reads matching selected genomes (default = none)
 
 ADDITIONAL OPTIONS:
 -h                	: Display this help message and exit
 
 EXAMPLE:
-./MetNano -L metadata.txt -o output_dir -n /path/to/nanopore/ -f [T] || [F] -Q [T] || [F]
+./MetNano -L metadata.txt -o output_dir -n /path/to/nanopore/ -d /path/to/kraken2/database/ -f [T] || [F] -Q [T] || [F]
 
 AUTHORS:
 Guillaume Nguyen, Jeff Gauthier and Anthony Piot (Levesque Lab)
@@ -69,9 +69,9 @@ while getopts "L:o:n:f:q:l:d:c:m:h:" opt; do
 done
 
 # Ensure mandatory parameters are provided
-if [ -z "$list" ] || [ -z "$output_dir" ] ; then
+if [ -z "$list" ] || [ -z "$output_dir" ] || [ -z "$database" ]; then
         echo ""
-		echo "Error: Missing required arguments. check list (-L) and output_dir (-o)"
+		echo "Error: Missing required arguments. Check association file (-L), kraken2 database (-d), and output_dir (-o)"
         usage
         exit 1
 fi
@@ -95,10 +95,6 @@ fi
 
 if [ -z "$minlength" ]; then
         minlength=300
-fi
-
-if [ -z "$database" ]; then
-        database='/mnt/ibis/rclevesq/DATABASES/kraken2_dbs/k2_core_nt_20251015/'
 fi
 
 if [ -z "$confidence" ]; then

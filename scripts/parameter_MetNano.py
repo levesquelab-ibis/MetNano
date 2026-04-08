@@ -29,7 +29,3 @@ tail_trim=20
 
 # Mapping to reference
 mapping_preset="lr:hq"
-
-# Database
-#core_nt='/mnt/ibis/rclevesq/DATABASES/kraken2_dbs/k2_core_nt_20251015/'
-core_nt='/mnt/ibis/rclevesq/DATABASES/kraken2_dbs/k2_custom/pseudomonas_aerugenosa/pseudomonas_db/'
