@@ -420,14 +420,12 @@ class Kraken2Runner:
                 "class": "C",
                 "phylum": "P"
             }
-
             bracken_outputs = []
             for level_name, level_code in BRACKEN_LEVELS.items():
                 bracken_output_s = os.path.join(
                     self.base_bracken,
                     f"{prefix}.bracken.{level_name}.tsv"
                 )
-
                 bracken_report_s = os.path.join(
                     self.base_bracken,
                     f"{prefix}.bracken.{level_name}.report"
@@ -436,7 +434,6 @@ class Kraken2Runner:
                 # Skip if already exists
                 if os.path.exists(bracken_output_s) and os.path.getsize(bracken_output_s) > 0:
                     self.log("INFO", f"Bracken {level_name} file already exists")
-                    bracken_outputs.append(bracken_output)
                     continue
 
                 bracken_cmd = (
@@ -451,11 +448,8 @@ class Kraken2Runner:
                 self.log("INFO", f"Running Bracken ({level_name})...")
                 self.log("RUN", bracken_cmd)
                 subprocess.run(bracken_cmd, shell=True, check=True)
-                bracken_outputs.append(bracken_output_s)
                 print()
-            self.log("INFO", "Bracken completed for all taxonomic levels")
-            concat_file = self.concatenate_bracken(bracken_outputs, fasta_file)
-            self.log("INFO", f"Final Bracken table written to {concat_file}\n")
+            self.log("INFO", "Bracken completed for all taxonomic levels\n")
 
         def run_all(self, max_workers=1):
 
@@ -485,8 +479,6 @@ class Kraken2Runner:
                             self.run_kraken2(f)
                         except subprocess.CalledProcessError as e:
                             self.log("ERROR", f"ERROR processing {f}: {e}")
-
-                    self.log("INFO", "Kraken2 processing finished.\n")
 
                     # Optional cleanup here
 
@@ -525,5 +517,5 @@ class Kraken2Runner:
                     self.log("INFO", f"Generating BIOM from Kraken2-style reports for {sample_name}...")
                     subprocess.run(cmd_biom, shell=True, check=True)
 
-                self.log("INFO", "All BIOM tables are generated\n")
+                self.log("INFO", "BIOM tables generated for all taxonomic levels\n")
                 self.log("END", "MetNano is now completed. Bye!")
