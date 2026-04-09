@@ -464,7 +464,7 @@ class Kraken2Runner:
                 for f in fasta_files:
                     sample_name = os.path.splitext(os.path.basename(f))[0]
                     sample_name = re.sub(r"_sliding(_[0-9.]+)?", "", sample_name, flags=re.IGNORECASE)
-                    expected_report = os.path.join(self.base_kraken, f"{sample_name}.report")
+                    expected_report = os.path.join(self.base_kraken, f"{sample_name}_{self.confidence}.report")
 
                     if not os.path.exists(expected_report) or os.path.getsize(expected_report) == 0:
                         files_to_run.append(f)
