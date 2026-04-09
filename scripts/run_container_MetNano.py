@@ -3,8 +3,9 @@ import os
 import argparse
 from class_module_container_MetNano import *
 from parameter_MetNano import *
+from datetime import datetime
 
-print("Running MetNano...", flush=True)
+print("# Starting MetNano with the following parameters:", flush=True)
 
 # Create the parser
 parser = argparse.ArgumentParser(description="Process some parameters.")
@@ -38,16 +39,14 @@ readmap= args.readmap
 database_name= os.path.basename(os.path.normpath(database))
 
 # For debugging, you can print all the variables to verify
-print("")
-print(f"Parameters:")
-print(f"Folder Nanopore: {folder_nanopore}")
-print(f"list_association: {list_association}")
-print(f"minlength: {minlength}")
-print(f"qualityscore: {qualityscore}")
-print(f"confidence: {confidence}")
-print(f"database: {database}")
-print(f"readmap: {readmap}")
-print("")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] ONT folder: {folder_nanopore}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] association file: {list_association}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] minlength: {minlength}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] minqualityscore: {qualityscore}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] read mapping on host genome: {readmap}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] kraken2 confidence score: {confidence}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] kraken2 database: {database}")
+print()
 
 # Add the directory containing your scripts to the Python path
 sys.path.append('/mnt/ibis/rclevesq/software/nanobatch_wgs/lspq_validation/src')
@@ -60,11 +59,6 @@ sliding_folder = unzup.sliding_dir
 trimmed_folder = unzup.trimmed_dir
 outputunzfile = unzup.outputunzfile
 
-print(f"Trimmed FASTQ files are in: {trimmed_folder}")
-print(f"Sliding FASTQ files are in: {sliding_folder}")
-print("")
-print(f"Output folder for kraken run FASTQ files are in: {outputunzfile}")
-
 kraken_input_dir = os.path.join(outputunzfile)
 
 runner = Kraken2Runner(
@@ -75,7 +69,7 @@ runner = Kraken2Runner(
     threads=6,
     confidence=confidence,
     kraken_env = kraken_env,
-    braken_env = braken_env
+    bracken_env = bracken_env
 )
 
 runner.run_all()

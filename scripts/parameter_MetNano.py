@@ -11,7 +11,7 @@ chopper_env="/project/rclevesq/software/miniconda3/manitou/envs/chopper_env"
 nanoplot_env="/project/rclevesq/software/miniconda3/manitou/envs/nanoplot_1.46.2"
 minimap2_env="/project/rclevesq/software/miniconda3/manitou/envs/minimap_2.28"
 kraken_env='/project/rclevesq/software/miniconda3/gqngu_manitou/envs/kraken2_2_17_1_env'
-braken_env='/project/rclevesq/software/miniconda3/manitou/envs/bracken_3.1_ap'
+bracken_env='/project/rclevesq/software/miniconda3/manitou/envs/bracken_3.1_ap'
 kraken_biom_env='/project/rclevesq/software/miniconda3/manitou/envs/kraken-biom_1.2.0'
 
 ## Utilities folder localisation

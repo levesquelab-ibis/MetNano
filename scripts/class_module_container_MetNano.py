@@ -2,22 +2,21 @@ import os
 import sys
 import subprocess
 import shutil
-from datetime import datetime
 import glob
 import pandas as pd
 import tempfile
 import math
 import re
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from parameter_MetNano import *
 
-########################### Class for demultiplexing and QC ############################
+############### Class for preprocessing of raw ONT reads ###############
 class Demultiplexing_qc:
 
-    def __init__(self, folder_no_sample_id, tread, metadata,readmap,qualityscore=10,minlength=1000,unzip=True   ):
+    def __init__(self, folder_no_sample_id, tread, metadata, readmap, qualityscore=10, minlength=1000, unzip=True):
         self.folder_no_sample_id = folder_no_sample_id.rstrip("/")
         self.last_folder = os.path.basename(self.folder_no_sample_id.rstrip("/"))
-        print(f"Debug  self.last_folder = { self.last_folder}", flush=True)
         self.qualityscore=qualityscore
         self.minlength=minlength
         self.tread = tread
@@ -34,94 +33,94 @@ class Demultiplexing_qc:
         self.activate_commandnanoplot_env = f"{CONDA_SOURCE_private} && conda activate {nanoplot_env}"
         self.activate_commandminimap_env = f"{CONDA_SOURCE_private} && conda activate {minimap2_env}"
 
-    def run_unzip(self):
-        # ---------- unzip and demultiplex barcoded sample ----------
+    def log(self, type, message):
+            print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [{type}] {message}", flush=True)
 
+    def run_unzip(self):
+        # ---------- Unzip and demultiplex barcoded samples ----------
         if not os.path.exists(self.outputunzfilefastq):
-            print(f"Folder unzip {self.outputunzfilefastq} is missing, running {unzip_barcode_script}", flush=True)
-            print("Running unzip_barcode_script ...", flush=True)
+            self.log("INFO", "Folder unzip {self.outputunzfilefastq} is missing, running {unzip_barcode_script}")
+            self.log("INFO", "Running unzip_barcode_script ...")
             unz_cmd = f"{unzip_barcode_script} {self.folder_no_sample_id} {self.tread}"
-            print(f"Command executed: {unz_cmd}", flush=True)
+            self.log("RUN", "{unz_cmd}")
             subprocess.run(unz_cmd, shell=True, check=True)
-            print("Unzip and demultiplexing done", flush=True)
+            self.log("INFO", "Unzip and demultiplexing done")
             os.makedirs(self.outputunzfilefasta, exist_ok=True)
             unz_cmd = f"mv *.fastq  {self.outputunzfilefastq}"
             subprocess.run(unz_cmd, shell=True, check=True)
-            print("move file to {self.outputunzfilefastq}", flush=True)
+            self.log("INFO", "move file to {self.outputunzfilefastq}")
         else:
-            print("Folder exists, skipping step", flush=True)
+            self.log("INFO", "Folder exists, skipping step")
 
     def create_ln_file(self) :
-       ### skip demultiplexing
+        # ---------- Skip demultiplexing ----------
+        print("# Demultiplexing", flush=True)
         if not os.path.exists(self.outputunzfilefastq):
-               print("Demultiplexing step not set with --unzip parameter. Direct copy ln link from original file to working directory", flush=True)
-               os.makedirs(self.outputunzfilefastq, exist_ok=True)
-               ln_cmd= f" ln -s {self.folder_no_sample_id}/*.fastq* {self.outputunzfilefastq}/ "
-               print(f"Command executed : {ln_cmd} ", flush=True)
-               subprocess.run(ln_cmd, shell=True, check=True)
-               print("Symbolic link created  into working directory ", flush=True)
-               print()
+            self.log("INFO", "Demultiplexing step not set with --unzip parameter.")
+            self.log("INFO Direct copy link from original file to working directory")
+            os.makedirs(self.outputunzfilefastq, exist_ok=True)
+            ln_cmd= f"ln -s {self.folder_no_sample_id}/*.fastq* {self.outputunzfilefastq}/ "
+            self.log("RUN", f"{ln_cmd} ")
+            subprocess.run(ln_cmd, shell=True, check=True)
+            self.log("INFO", "Symbolic link created  into working directory\n")
+        elif os.path.exists(self.outputunzfilefastq):
+            self.log("INFO", "Symbolic link already exists\n")
 
     def run_rename(self):
         # ---------- Rename file with metadata provided ----------
         barcode_fastqs = glob.glob(os.path.join(self.outputunzfilefastq, "*barcode*.fastq*"))
-        print(f"Check barcode file fastq in {self.outputunzfilefastq}", flush=True)
+        print(f"# Renaming barcodes", flush=True)
         if barcode_fastqs:
-            print(f"Next step running {rename_barcodes_w_sheet} using metadata file provided {self.metadata}", flush=True)
             rename_cmd = f"{rename_barcodes_w_sheet} {self.metadata}"
-            print(f"Command executed: {rename_cmd} in folder {self.outputunzfilefastq}", flush=True)
+            self.log("RUN", f"{rename_cmd}")
             subprocess.run(rename_cmd, shell=True, check=True, cwd=self.outputunzfilefastq)
-            print("Rename with metadata done", flush=True)
-            print()
+            self.log("INFO", "Renaming samples with metadata done\n")
         else:
-            print("No barcodefile exists, skipping step run_rename", flush=True)
-            print()
+            self.log("INFO", "No barcode file exists")
 
     def run_nanoplot_parallel(self):
-         # ---------- Run individual nanoplot and nano QC for each conserved samples ----------
-        print("Next step running nanoplot + nanoQC", flush=True)
-
+        # ---------- Run individual NanoPlot and nanoQC for each samples ----------
         fastqs = glob.glob(os.path.join(self.outputunzfilefastq, "*.fastq"))
-        print(f"[INFO] FASTQ files found: {len(fastqs)}", flush=True)
+        self.log("INFO", f"FASTQ file found: {len(fastqs)}\n")
 
         if not fastqs:
-            print("[WARN] No FASTQ files found, skipping NanoPlot/nanoQC", flush=True)
+            self.log("WARN", "No FASTQ files found, skipping NanoPlot/nanoQC\n")
             return
 
         def run_one(fq):
             sample = os.path.basename(fq).replace(".fastq", "")
             nanoplot_out = os.path.join(self.outputunzfile,"01_nanoplot" ,f"nanoplot_{sample}")
-            nanoQC_out   = os.path.join(self.outputunzfile,"02_nanoQC" ,f"nanoQC_{sample}")
+            nanoQC_out = os.path.join(self.outputunzfile,"02_nanoQC" ,f"nanoQC_{sample}")
 
             # ---------- NanoPlot ----------
+            print("# Quality control with NanoPlot", flush = True)
+            self.log("INFO", f"Analyzing sample {sample}...")
             if os.path.isdir(nanoplot_out):
-                print(f"[SKIP] NanoPlot already exists for {sample}", flush=True)
-                print()
+                self.log("INFO", f"NanoPlot already exists for sample {sample}\n")
             else:
                 nanoplot_cmd = (
                     f"{self.activate_commandnanoplot_env}   && NanoPlot --fastq {fq} "
                     f"--outdir {nanoplot_out} "
-                    f"--prefix {sample} "
+                    f"--prefix {sample}_ "
                     f"-t 1"
                 )
-                print(f"[RUN] {nanoplot_cmd}", flush=True)
+                self.log("RUN", "{nanoplot_cmd}")
                 subprocess.run(nanoplot_cmd, shell=True, check=True)
-                print(f"[END] NanoPlot {sample}", flush=True)
-                print()
+                self.log("INFO", f"NanoPlot completed for sample {sample}")
 
             # ---------- nanoQC ----------
+            print("# Quality control with nanoQC", flush = True)
+            self.log("INFO", f"Analyzing sample {sample}...")
             if os.path.isdir(nanoQC_out):
-                print(f"[SKIP] nanoQC already exists for {sample}", flush=True)
-                print()
+                self.log("INFO", f"nanoQC already exists for sample {sample}\n")
             else:
                 nanoQC_cmd = (
                     f"{self.activate_commandnanoQC_env} && "
                     f"nanoQC {fq} --outdir {nanoQC_out}"
                 )
-                print(f"[RUN] {nanoQC_cmd}", flush=True)
+                self.log("RUN", f"{nanoQC_cmd}")
                 subprocess.run(nanoQC_cmd, shell=True, check=True)
-                print(f"[END] nanoQC {sample}", flush=True)
-                print()
+                self.log("INFO", f"nanoQC completed for sample {sample}\n")
 
         # ---------- Parallel execution ----------
         with ThreadPoolExecutor(max_workers=self.tread) as exe:
@@ -130,37 +129,36 @@ class Demultiplexing_qc:
                 f.result()  # surface exceptions
 
     def assembly_stat(self):
-         # ---------- Generate assembly stats file for all sample in main folder ----------
-        print(f"Next step running assembly stats", flush=True)
+        # ---------- Generate assembly stats files for all samples in ONT folder ----------
+        print(f"# Sequencing statistics with assembly-stats", flush=True)
+        self.log("INFO", f"Computing sequencing reads statistics...")
         out_dir = os.path.join(self.outputunzfile,"03_statistics" )
         out_file = os.path.join(out_dir ,"fastq_metrics.txt")
         os.makedirs(out_dir, exist_ok=True)
         if os.path.isfile(out_file):
-            print("[SKIP] assembly_stats.txt already exists", flush=True)
+            self.log("INFO", "assembly_stats.txt already exists\n")
             return
-        cmd = f"{assembly_stats} -t  {self.outputunzfilefastq}/*.fastq > {out_file}  "
-        print(f"Command executed: {cmd} in {self.outputunzfile} ", flush=True)
+        cmd = f"{assembly_stats} -t {self.outputunzfilefastq}/*.fastq > {out_file}  "
+        self.log("RUN", f" {cmd} in {self.outputunzfile}")
         subprocess.run(cmd, shell=True, check=True, cwd=self.outputunzfile)
-        print()
+        self.log("INFO", f"Sequencing stats written to {out_file}\n")
 
     def run_chopper_parallel(self):
-        # ---------- Run chopper and seqkit  with selected parameters (see parameter_metnano.txt file.) ----------
-        print("Next step running chopper", flush=True)
-
+        # ---------- Run chopper and seqkit  with selected parameters (see parameter_MetNano.py file) ----------
+        print("# Read filtering and trimming with chopper", flush=True)
         filelist_fastQ = glob.glob(os.path.join(self.outputunzfilefastq, "*.fastq*"))
 
-        # output directories
+        # Output directories
         self.trimmed_dir = os.path.join(self.outputunzfile, "04_trimmed")
         self.unmapped_dir = os.path.join(self.outputunzfile, "04a_unmapped")
         self.sliding_dir = os.path.join(self.outputunzfile, "05_sliding")
-
         os.makedirs(self.trimmed_dir, exist_ok=True)
         os.makedirs(self.sliding_dir, exist_ok=True)
 
         def process_fastq(fq):
             base_name = os.path.basename(fq)
 
-            # ---- trimmed output ----
+            # Trimmed output
             if fq.endswith(".fastq.gz"):
                 out_fq = os.path.join(
                     self.trimmed_dir,
@@ -172,7 +170,7 @@ class Demultiplexing_qc:
                     base_name.replace(".fastq", "_trimmed.fastq")
                 )
 
-            # ---- sliding output ----
+            # Segmented output
             out_fq_sliding = os.path.join(
                 self.sliding_dir,
                 base_name.replace(".fastq.gz", "")
@@ -181,6 +179,7 @@ class Demultiplexing_qc:
             )
 
             # ---- STEP 1: chopper ----
+            self.log("INFO", f"Trimming file {base_name}...")
             if not os.path.exists(out_fq):
                 cmd = (
                     f"{self.activate_commandchopper_env} && "
@@ -189,14 +188,14 @@ class Demultiplexing_qc:
                     f"chopper -q {self.qualityscore} -l {self.minlength} -t 1 "
                     f"> {out_fq}"
                 )
-                print(f"Running chopper: {cmd}", flush=True)
+                self.log("RUN", f"{cmd}")
                 subprocess.run(cmd, shell=True, check=True)
+                self.log("INFO", f"Trimming completed for {base_name}\n")
             else:
-                print(f"Skipping chopper (exists): {out_fq}", flush=True)
+                self.log("INFO", f"Trimmed file already exists for {base_name}\n")
 
-                     # ---- STEP 1b: optional minimap2 + samtools if readmap is provided ----
+            # ----- STEP 1b: optional minimap2 + samtools if readmap parameter is provided -----
             if hasattr(self, 'readmap') and self.readmap not in [None, "None"]:
-                print(f"preparinf running mapping to reference", flush=True)
                 unmapped_fq = os.path.join(
                     self.unmapped_dir,
                     base_name.replace(".fastq.gz", "")
@@ -205,16 +204,19 @@ class Demultiplexing_qc:
                 )
 
                 if not os.path.exists(unmapped_fq):
-                    # Run minimap2 alignment
+                    # ----- Run minimap2 alignment -----
+                    print(f"# Mapping reads to reference genome with minimap2", flush = True)
                     cmd_map = (
                         f" {self.activate_commandminimap_env} &&  minimap2 -a -x {mapping_preset} -t 1 "
                         f"{self.readmap} {out_fq} "
                         f"> {unmapped_fq.replace('_unmapped.fastq', '_alignment.sam')}"
                     )
-                    print(f"Running minimap2: {cmd_map}", flush=True)
+                    self.log("RUN", f"{cmd_map}")
                     subprocess.run(cmd_map, shell=True, check=True)
+                    self.log("INFO", f"Mapping completed for {out_fq}\n")
 
-                    # Extract unmapped reads
+                    # ----- Extract unmapped reads -----
+                    print(f"# Extraction of unmapped reads with samtools", flush = True)
                     cmd_samtools = (
                         f"conda deactivate && conda activate samtools && "
                         f"samtools view -bf 4 "
@@ -224,22 +226,23 @@ class Demultiplexing_qc:
                         f"{unmapped_fq.replace('_unmapped.fastq', '_unmapped.bam')} "
                         f"> {unmapped_fq}"
                     )
-                    print(f"Extracting unmapped reads: {cmd_samtools}", flush=True)
+                    self.log("RUN", f"{cmd_samtools}")
                     subprocess.run(cmd_samtools, shell=True, check=True)
+                    self.log("INFO", f"Reads extracted from {unmapped_fq.replace('_unmapped.fastq', '_unmapped.bam')}")
                 else:
-                    print(f"Skipping readmap filtering (exists): {unmapped_fq}", flush=True)
+                    self.log("INFO", f"Readmap output already exists: {unmapped_fq}\n")
 
-                # Use unmapped reads for sliding step
+                # Use unmapped reads for segmentation step
                 fq_for_sliding = unmapped_fq
             else:
                 fq_for_sliding = out_fq
 
-            # ---- STEP 2: seqkit sliding ----
+            # ----- STEP 2: SeqKit -----
+            print("# Read segmentation with SeqKit", flush=True)
+            self.log("INFO", f"Segmenting reads for {fq_for_sliding}...")
             if os.path.exists(out_fq_sliding):
-                print(f"Skipping sliding (exists): {out_fq_sliding}", flush=True)
+                self.log("INFO", f"Segmented file already exists for {fq_for_sliding}\n")
                 return
-
-            print("Chopper done, starting seqkit sliding", flush=True)
 
             cmd = (
                 f"module load seqkit && "
@@ -249,9 +252,9 @@ class Demultiplexing_qc:
                 f"{fq_for_sliding} "
                 f"> {out_fq_sliding}"
             )
-
-            print(f"Running seqkit: {cmd}", flush=True)
+            self.log("RUN", f"{cmd}")
             subprocess.run(cmd, shell=True, check=True)
+            self.log("INFO", f"Segmenting completed for {fq_for_sliding}\n")
 
         with ThreadPoolExecutor(max_workers=self.tread) as exe:
                       future_map = {
@@ -265,24 +268,21 @@ class Demultiplexing_qc:
     def run(self):
         if not self.unzip:
             self.run_unzip()
-            print("Skipping unzip")  # runs if False
+            self.log("INFO", "Skipping unzip")  # runs if False
         else:
             self.create_ln_file()
         self.run_rename()
         self.run_nanoplot_parallel()
         self.assembly_stat()
         self.run_chopper_parallel()
-        print(f"Demultiplexing_qc is Done", flush=True)
-        print()
 
-######################## Class for read taxonomic classification ###########################
+########## Class for read taxonomic classification and abundance estimation ##########
 class Kraken2Runner:
         """
         Python class to run Kraken2 on multiple FASTA/FASTQ files,
         using a temporary DB copy in RAM (/dev/shm) for speed.
         """
-
-        def __init__(self, db_path, db_name, fasta_dir, out_dir,kraken_env, braken_env,
+        def __init__(self, db_path, db_name, fasta_dir, out_dir,kraken_env, bracken_env,
                      threads=6, confidence=0.01 ,minlength=300):
             self.db_path = db_path
             self.db_name = db_name
@@ -293,27 +293,27 @@ class Kraken2Runner:
             self.minlength=minlength
             self.temp_db_path = os.path.join("/dev/shm", self.db_name)
             self.base_kraken = os.path.join(self.out_dir, "06_kraken2", self.db_name)
-            self.base_braken = os.path.join(self.out_dir, "07_braken", self.db_name)
+            self.base_bracken = os.path.join(self.out_dir, "07_bracken", self.db_name)
             self.base_biom = os.path.join(self.out_dir, "08_biom", self.db_name)
 
             os.makedirs(self.base_kraken, exist_ok=True)
-            os.makedirs(self.base_braken, exist_ok=True)
+            os.makedirs(self.base_bracken, exist_ok=True)
             os.makedirs(self.base_biom, exist_ok=True)
 
             self.activate_commandkraken_env= f"{CONDA_SOURCE_private} && conda activate {kraken_env}"
-            self.activate_commandbraken_env= f"{CONDA_SOURCE_private} && conda activate {braken_env}"
+            self.activate_commandbracken_env= f"{CONDA_SOURCE_private} && conda activate {bracken_env}"
             self.activate_commandbrabiom_env = f"{CONDA_SOURCE_private} && conda activate {kraken_biom_env}"
 
             os.makedirs(self.out_dir, exist_ok=True)
 
-        def log(self, message):
-            print(f"{datetime.now()} - INFO - {message}", flush=True)
+        def log(self, type, message):
+            print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [{type}] {message}", flush=True)
 
         def copy_db_to_ramdisk(self):
-         # ---------- load db in ram disk ---------
-            """Copy the Kraken2 database to /dev/shm"""
-            self.log(f"Copying database {self.db_name} to RAM (/dev/shm)...")
+            # ---------- Load Kraken2 database in ram disk (/dev/shm) ----------
+            print(f"# Load Kraken2 database into RAM disk", flush = True)
             os.makedirs(self.temp_db_path, exist_ok=True)
+            self.log("INFO", "Copying database to /dev/shm/...")
             cmd= (
                  f"rsync -vP "
                  f"{self.db_path}/*  "
@@ -326,64 +326,60 @@ class Kraken2Runner:
             for f in required_files:
                if not os.path.exists(os.path.join(self.temp_db_path, f)):
                    raise RuntimeError(f"Database copy incomplete: missing {f}")
-
-            self.log("Database copy completed.")
+            self.log("INFO", "Database copy completed\n")
 
         def concatenate_bracken(self, bracken_files, fasta_file):
-             # ----------set environnement variables for kraken and braken ----------
-                expected_cols = [
-                    "name",
-                    "taxonomy_id",
-                    "taxonomy_lvl",
-                    "kraken_assigned_reads",
-                    "added_reads",
-                    "new_est_reads",
-                    "fraction_total_reads"
-                ]
-                dfs = []
+            # ---------- Set environment variables for kraken2 and bracken ----------
+            expected_cols = [
+                "name",
+                "taxonomy_id",
+                "taxonomy_lvl",
+                "kraken_assigned_reads",
+                "added_reads",
+                "new_est_reads",
+                "fraction_total_reads"]
+            dfs = []
 
-                for f in bracken_files:
-                    level = os.path.basename(f).split(".bracken.")[1].replace(".tsv", "")
-                    df = pd.read_csv(f, sep="\t")
-                    # Ensure consistent columns
-                    for col in expected_cols:
-                        if col not in df.columns:
-                            df[col] = 0
-                    df = df[expected_cols]
-                    df["sample"] = os.path.basename(fasta_file)
-                    df["level"] = level
-                    dfs.append(df)
-                final_df = pd.concat(dfs, ignore_index=True)
-                out_concat = os.path.join(
-                    self.out_dir,"07_braken" ,f"{self.db_name}",
-                    f"{os.path.basename(fasta_file)}_{self.confidence}.bracken.ALL.tsv"
-                )
-                final_df.to_csv(out_concat, sep="\t", index=False)
-                return out_concat
+            for f in bracken_files:
+                level = os.path.basename(f).split(".bracken.")[1].replace(".tsv", "")
+                df = pd.read_csv(f, sep="\t")
+                # Ensure consistent columns
+                for col in expected_cols:
+                    if col not in df.columns:
+                        df[col] = 0
+                df = df[expected_cols]
+                df["sample"] = os.path.basename(fasta_file)
+                df["level"] = level
+                dfs.append(df)
+            final_df = pd.concat(dfs, ignore_index=True)
+            out_concat = os.path.join(
+                self.out_dir,"07_bracken" ,f"{self.db_name}",
+                f"{os.path.basename(fasta_file)}_{self.confidence}.bracken.ALL.tsv"
+            )
+            final_df.to_csv(out_concat, sep="\t", index=False)
+            return out_concat
 
         def run_kraken2(self, fasta_file):
             import pandas as pd
-            # ----------Kraken2 command ----------
-            # """Run Kraken2 on a single FASTA/FASTQ file"""
+            # --------- Kraken2 command ----------
+            """Run Kraken2 on a single FASTA/FASTQ file"""
+            print("# Read taxonomic classification with Kraken2", flush = True)
             sample_name = os.path.splitext(os.path.basename(fasta_file))[0]
-            print(f"BEFORE: {sample_name}")
             sample_name = re.sub(r"_sliding(_[0-9.]+)?", "", sample_name, flags=re.IGNORECASE)
-            print(f"AFTER: {sample_name}")
-
             prefix = f"{sample_name}_{self.confidence}"
 
             kraken_output = os.path.join(self.base_kraken, f"{prefix}.all")
             kraken_report = os.path.join(self.base_kraken, f"{prefix}.report")
 
-            bracken_output = os.path.join(self.base_braken, f"{prefix}.bracken")
-            bracken_report = os.path.join(self.base_braken, f"{prefix}.bracken.report")
+            bracken_output = os.path.join(self.base_bracken, f"{prefix}.bracken")
+            bracken_report = os.path.join(self.base_bracken, f"{prefix}.bracken.report")
 
             def file_exists_and_not_empty(path):
                 return os.path.exists(path) and os.path.getsize(path) > 0
 
-           # ---- Skip logic ----
+            # Skip logic
             if file_exists_and_not_empty(kraken_output) and file_exists_and_not_empty(kraken_report):
-                print(f"[INFO] Kraken2 output already exists for {prefix}. Skipping.")
+                self.log("INFO", f"Kraken2 output already exists for {prefix}\n")
             else:
 
                 # Check that required files exist
@@ -392,11 +388,10 @@ class Kraken2Runner:
                 if missing_files:
                     raise RuntimeError(f"[ERROR] Missing required DB files in RAM: {missing_files}")
 
-                # ---- Kraken2 ----
+                # ----- Kraken2 -----
                 kraken_cmd = (
-
                     #f"{self.activate_commandkraken_env} && "
-                    f" module load kraken && "
+                    f"module load kraken && "
                     f"kraken2 "
                     f"--db {self.temp_db_path} "
                     f"--threads 1 "
@@ -404,18 +399,19 @@ class Kraken2Runner:
                     f"--report {kraken_report} "
                     f"--confidence {self.confidence} "
                     f"--memory-mapping "
-                    f"{fasta_file} "
+                    f"{fasta_file}"
                 )
 
-                print(f"[INFO] Running Kraken2 for {prefix}")
+                self.log("INFO", f"Running Kraken2 for {prefix}")
                 subprocess.run(kraken_cmd, shell=True, check=True)
-                print(f"[INFO] Kraken2 ended, start braken")
+                self.log("END", f"Kraken2 ended\n")
 
-                # ---- Post-run check ----
+                # Post-run check
                 if not file_exists_and_not_empty(kraken_output) or not file_exists_and_not_empty(kraken_report):
                     raise RuntimeError(f"[ERROR] Kraken2 run did not produce expected output files for {prefix}")
 
-            # ---- Bracken (all taxonomic levels) ----
+            # ----- Bracken (all taxonomic levels) -----
+            print("# Taxon abundance estimation with Bracken", flush = True)
             BRACKEN_LEVELS = {
                 "species": "S",
                 "genus": "G",
@@ -428,24 +424,23 @@ class Kraken2Runner:
             bracken_outputs = []
             for level_name, level_code in BRACKEN_LEVELS.items():
                 bracken_output_s = os.path.join(
-                    self.base_braken,
+                    self.base_bracken,
                     f"{prefix}.bracken.{level_name}.tsv"
                 )
 
                 bracken_report_s = os.path.join(
-                    self.base_braken,
+                    self.base_bracken,
                     f"{prefix}.bracken.{level_name}.report"
                 )
 
                 # Skip if already exists
                 if os.path.exists(bracken_output_s) and os.path.getsize(bracken_output_s) > 0:
-                    self.log(f"looking in {bracken_output} if file exist")
-                    self.log(f"Skipping Bracken {level_name} — file exists.")
+                    self.log("INFO", f"Bracken {level_name} file already exists")
                     bracken_outputs.append(bracken_output)
                     continue
 
                 bracken_cmd = (
-                    f"{self.activate_commandbraken_env} && bracken "
+                    f"{self.activate_commandbracken_env} && bracken "
                     f"-d {self.db_path} "
                     f"-i {kraken_report} "
                     f"-o {bracken_output_s} "
@@ -453,69 +448,69 @@ class Kraken2Runner:
                     f"-r {self.minlength} "
                     f"-l {level_code}"
                 )
-
-                self.log(f"Running Bracken ({level_name})...")
-                self.log(bracken_cmd)
+                self.log("INFO", f"Running Bracken ({level_name})...")
+                self.log("RUN", bracken_cmd)
                 subprocess.run(bracken_cmd, shell=True, check=True)
                 bracken_outputs.append(bracken_output_s)
-            self.log("Bracken completed for all taxonomic levels.")
+                print()
+            self.log("INFO", "Bracken completed for all taxonomic levels")
             concat_file = self.concatenate_bracken(bracken_outputs, fasta_file)
-            self.log(f"Final Bracken table written to {concat_file}")
+            self.log("INFO", f"Final Bracken table written to {concat_file}\n")
 
         def run_all(self, max_workers=1):
 
                 fasta_files = glob.glob(os.path.join(self.fasta_dir, "*.fastq*"))
 
                 if not fasta_files:
-                    self.log("No FASTQ files found.")
+                    self.log("WARN", "No FASTQ files found.")
                     return
 
                 files_to_run = []
 
                 for f in fasta_files:
                     sample_name = os.path.splitext(os.path.basename(f))[0]
-                    print(f"BEFORE: {sample_name}")
                     sample_name = re.sub(r"_sliding(_[0-9.]+)?", "", sample_name, flags=re.IGNORECASE)
-                    print(f"AFTER: {sample_name}")
                     expected_report = os.path.join(self.base_kraken, f"{sample_name}.report")
 
                     if not os.path.exists(expected_report) or os.path.getsize(expected_report) == 0:
                         files_to_run.append(f)
 
-                # Only load RAM + run Kraken if needed
+                # Only load RAM + run Kraken2 if needed
                 if files_to_run:
-                    self.log(f"{len(files_to_run)} samples need processing. Loading DB into RAM...")
+                    self.log("INFO", f"{len(files_to_run)} samples need processing\n")
                     self.copy_db_to_ramdisk()
 
                     for f in files_to_run:
                         try:
                             self.run_kraken2(f)
                         except subprocess.CalledProcessError as e:
-                            self.log(f"ERROR processing {f}: {e}")
+                            self.log("ERROR", f"ERROR processing {f}: {e}")
 
-                    self.log("Kraken processing finished.")
-                    # optional cleanup here
+                    self.log("INFO", "Kraken2 processing finished.\n")
+
+                    # Optional cleanup here
 
                 else:
-                    self.log("All samples already processed. Skipping Kraken2.")
+                    self.log("INFO", "All samples already processed. Skipping Kraken2.\n")
 
                 # ---------- Generate BIOM tables: one per report ----------
-                report_files = glob.glob(os.path.join(self.base_braken, "*.report"))
-                braken_reports = report_files
-                if not braken_reports:
-                    self.log("No Braken reports found. Cannot generate BIOM tables.")
+                print("# Converting Kraken2-style reports to BIOM format with kraken-biom", flush = True)
+                report_files = glob.glob(os.path.join(self.base_bracken, "*.report"))
+                bracken_reports = report_files
+                if not bracken_reports:
+                    self.log("WARN", "No Bracken reports found. Cannot generate BIOM tables")
                     return
 
-                OUTPUT_DIR_biom = os.path.join(self.out_dir, "08_biom","braken",f"{self.db_name}")
+                OUTPUT_DIR_biom = os.path.join(self.out_dir, "08_biom","bracken",f"{self.db_name}")
                 os.makedirs(OUTPUT_DIR_biom, exist_ok=True)
 
-                for report in braken_reports:
+                for report in bracken_reports:
                     sample_name = os.path.splitext(os.path.basename(report))[0]
                     output_file = os.path.join(OUTPUT_DIR_biom, f"{sample_name}.biom")
 
                     # Skip if BIOM already exists
                     if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
-                        self.log(f"BIOM for {sample_name} already exists. Skipping.")
+                        self.log("INFO", f"BIOM for {sample_name} already exists")
                         continue
 
                     # Build command for this single file
@@ -523,11 +518,12 @@ class Kraken2Runner:
                         f"{self.activate_commandbrabiom_env} && "
                         f"kraken-biom {report} "
                         f"--fmt json "
-                        f"--output_fp {output_file}"
-                        f" --max D  --min S"
+                        f"--output_fp {output_file} "
+                        f"--max D --min S"
                     )
 
-                    self.log(f"Generating BIOM Braken for {sample_name}...")
+                    self.log("INFO", f"Generating BIOM from Kraken2-style reports for {sample_name}...")
                     subprocess.run(cmd_biom, shell=True, check=True)
 
-                self.log("All BIOM tables generated. Bye!")
+                self.log("INFO", "All BIOM tables are generated\n")
+                self.log("END", "MetNano is now completed. Bye!")
