@@ -7,6 +7,7 @@ import pandas as pd
 import tempfile
 import math
 import re
+import pandas as pd
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from parameter_MetNano import *
@@ -279,7 +280,7 @@ class Demultiplexing_qc:
 ########## Class for read taxonomic classification and abundance estimation ##########
 class Kraken2Runner:
         """
-        Python class to run Kraken2 on multiple FASTA/FASTQ files,
+        Python class to run Kraken2 on multiple FASTA files,
         using a temporary DB copy in RAM (/dev/shm) for speed.
         """
         def __init__(self, db_path, db_name, fasta_dir, out_dir,kraken_env, bracken_env,
@@ -328,39 +329,7 @@ class Kraken2Runner:
                    raise RuntimeError(f"Database copy incomplete: missing {f}")
             self.log("INFO", "Database copy completed\n")
 
-        def concatenate_bracken(self, bracken_files, fasta_file):
-            # ---------- Set environment variables for kraken2 and bracken ----------
-            expected_cols = [
-                "name",
-                "taxonomy_id",
-                "taxonomy_lvl",
-                "kraken_assigned_reads",
-                "added_reads",
-                "new_est_reads",
-                "fraction_total_reads"]
-            dfs = []
-
-            for f in bracken_files:
-                level = os.path.basename(f).split(".bracken.")[1].replace(".tsv", "")
-                df = pd.read_csv(f, sep="\t")
-                # Ensure consistent columns
-                for col in expected_cols:
-                    if col not in df.columns:
-                        df[col] = 0
-                df = df[expected_cols]
-                df["sample"] = os.path.basename(fasta_file)
-                df["level"] = level
-                dfs.append(df)
-            final_df = pd.concat(dfs, ignore_index=True)
-            out_concat = os.path.join(
-                self.out_dir,"07_bracken" ,f"{self.db_name}",
-                f"{os.path.basename(fasta_file)}_{self.confidence}.bracken.ALL.tsv"
-            )
-            final_df.to_csv(out_concat, sep="\t", index=False)
-            return out_concat
-
         def run_kraken2(self, fasta_file):
-            import pandas as pd
             # --------- Kraken2 command ----------
             """Run Kraken2 on a single FASTA/FASTQ file"""
             print("# Read taxonomic classification with Kraken2", flush = True)
