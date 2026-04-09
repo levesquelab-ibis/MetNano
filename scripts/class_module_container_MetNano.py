@@ -302,16 +302,11 @@ class TaxonomicClassification:
             self.base_kraken = os.path.join(self.out_dir, "06_kraken2", self.db_name)
             self.base_bracken = os.path.join(self.out_dir, "07_bracken", self.db_name)
             self.base_biom = os.path.join(self.out_dir, "08_biom", self.db_name)
-
-            os.makedirs(self.base_kraken, exist_ok=True)
-            os.makedirs(self.base_bracken, exist_ok=True)
-            os.makedirs(self.base_biom, exist_ok=True)
-
             self.activate_commandkraken_env= f"{CONDA_SOURCE_private} && conda activate {kraken_env}"
             self.activate_commandbracken_env= f"{CONDA_SOURCE_private} && conda activate {bracken_env}"
             self.activate_commandbrabiom_env = f"{CONDA_SOURCE_private} && conda activate {kraken_biom_env}"
 
-            os.makedirs(self.out_dir, exist_ok=True)
+            #os.makedirs(self.out_dir, exist_ok=True)
 
         def log(self, type, message):
             print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [{type}] {message}", flush=True)
@@ -339,6 +334,7 @@ class TaxonomicClassification:
             # --------- Kraken2 command ----------
             """Run Kraken2 on a single FASTA/FASTQ file"""
             print("# Read taxonomic classification with Kraken2", flush = True)
+            os.makedirs(self.base_kraken, exist_ok=True)
             sample_name = os.path.splitext(os.path.basename(fasta_file))[0]
             sample_name = re.sub(r"_sliding(_[0-9.]+)?", "", sample_name, flags=re.IGNORECASE)
             prefix = f"{sample_name}_{self.confidence}"
@@ -386,6 +382,7 @@ class TaxonomicClassification:
         def run_bracken(self, fasta_file):
             # ----- Bracken (all taxonomic levels) -----
             print("# Taxon abundance estimation with Bracken", flush = True)
+            os.makedirs(self.base_bracken, exist_ok=True)
             sample_name = os.path.splitext(os.path.basename(fasta_file))[0]
             sample_name = re.sub(r"_sliding(_[0-9.]+)?", "", sample_name, flags=re.IGNORECASE)
             prefix = f"{sample_name}_{self.confidence}"
@@ -436,6 +433,7 @@ class TaxonomicClassification:
         def run_krakenbiom(self):
             # ---------- Generate BIOM tables, one per report ----------
             print("# Converting Kraken2-style reports to BIOM format with kraken-biom", flush = True)
+            os.makedirs(self.base_biom, exist_ok=True)
             report_files = glob.glob(os.path.join(self.base_bracken, "*.report"))
             bracken_reports = report_files
             if not bracken_reports:
@@ -510,4 +508,4 @@ class TaxonomicClassification:
                 except subprocess.CalledProcessError as e:
                     self.log("ERROR", f"ERROR running kraken-biom: {e}")
 
-                self.log("END", "MetNano is now completed. Bye!")
+                self.log("END", "MetNano is now complete. Bye!")
