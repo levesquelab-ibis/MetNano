@@ -488,7 +488,9 @@ class TaxonomicClassification:
                         try:
                             self.run_kraken2(f)
                         except subprocess.CalledProcessError as e:
-                            self.log("ERROR", f"ERROR processing {f}: {e}")
+                            self.log("ERROR", f"ERROR processing {f}")
+                            self.log("ERROR", f"{e}")
+                            sys.exit(1)
                 else:
                     self.log("INFO", "Kraken2 output files already exist")
                     self.log("INFO", "Not loading DB into memory")
@@ -500,12 +502,16 @@ class TaxonomicClassification:
                     try:
                         self.run_bracken(f)
                     except subprocess.CalledProcessError as e:
-                        self.log("ERROR", f"ERROR processing {f}: {e}")
+                        self.log("ERROR", f"ERROR processing {f}")
+                        self.log("ERROR", f"{e}")
+                        sys.exit(1)
 
                 # Run kraken-biom
                 try:
                     self.run_krakenbiom()
                 except subprocess.CalledProcessError as e:
-                    self.log("ERROR", f"ERROR running kraken-biom: {e}")
+                    self.log("ERROR", f"ERROR running kraken-biom")
+                    self.log("ERROR", f"{e}")
+                    sys.exit(1)
 
                 self.log("END", "MetNano is now complete. Bye!")
