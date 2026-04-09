@@ -94,7 +94,6 @@ class Demultiplexing_qc:
 
             # ---------- NanoPlot ----------
             print("# Quality control with NanoPlot", flush = True)
-            self.log("INFO", f"Analyzing sample {sample}...")
             if os.path.isdir(nanoplot_out):
                 self.log("INFO", f"NanoPlot already exists for sample {sample}\n")
             else:
@@ -104,13 +103,13 @@ class Demultiplexing_qc:
                     f"--prefix {sample}_ "
                     f"-t 1"
                 )
+                self.log("INFO", f"Analyzing sample {sample}...")
                 self.log("RUN", "{nanoplot_cmd}")
                 subprocess.run(nanoplot_cmd, shell=True, check=True)
                 self.log("INFO", f"NanoPlot completed for sample {sample}")
 
             # ---------- nanoQC ----------
             print("# Quality control with nanoQC", flush = True)
-            self.log("INFO", f"Analyzing sample {sample}...")
             if os.path.isdir(nanoQC_out):
                 self.log("INFO", f"nanoQC already exists for sample {sample}\n")
             else:
@@ -118,6 +117,7 @@ class Demultiplexing_qc:
                     f"{self.activate_commandnanoQC_env} && "
                     f"nanoQC {fq} --outdir {nanoQC_out}"
                 )
+                self.log("INFO", f"Analyzing sample {sample}...")
                 self.log("RUN", f"{nanoQC_cmd}")
                 subprocess.run(nanoQC_cmd, shell=True, check=True)
                 self.log("INFO", f"nanoQC completed for sample {sample}\n")
@@ -131,13 +131,13 @@ class Demultiplexing_qc:
     def assembly_stat(self):
         # ---------- Generate assembly stats files for all samples in ONT folder ----------
         print(f"# Sequencing statistics with assembly-stats", flush=True)
-        self.log("INFO", f"Computing sequencing reads statistics...")
         out_dir = os.path.join(self.outputunzfile,"03_statistics" )
         out_file = os.path.join(out_dir ,"fastq_metrics.txt")
         os.makedirs(out_dir, exist_ok=True)
         if os.path.isfile(out_file):
-            self.log("INFO", "assembly_stats.txt already exists\n")
+            self.log("INFO", "File assembly_stats.txt already exists\n")
             return
+        self.log("INFO", f"Computing sequencing reads statistics...")
         cmd = f"{assembly_stats} -t {self.outputunzfilefastq}/*.fastq > {out_file}  "
         self.log("RUN", f" {cmd} in {self.outputunzfile}")
         subprocess.run(cmd, shell=True, check=True, cwd=self.outputunzfile)
@@ -179,8 +179,8 @@ class Demultiplexing_qc:
             )
 
             # ---- STEP 1: chopper ----
-            self.log("INFO", f"Trimming file {base_name}...")
             if not os.path.exists(out_fq):
+                self.log("INFO", f"Trimming file {base_name}...")
                 cmd = (
                     f"{self.activate_commandchopper_env} && "
                     f"cat {fq} | "
@@ -239,22 +239,22 @@ class Demultiplexing_qc:
 
             # ----- STEP 2: SeqKit -----
             print("# Read segmentation with SeqKit", flush=True)
-            self.log("INFO", f"Segmenting reads for {fq_for_sliding}...")
             if os.path.exists(out_fq_sliding):
                 self.log("INFO", f"Segmented file already exists for {fq_for_sliding}\n")
                 return
-
-            cmd = (
-                f"module load seqkit && "
-                f"seqkit sliding "
-                f"-W {self.minlength} "
-                f"-s {self.minlength} "
-                f"{fq_for_sliding} "
-                f"> {out_fq_sliding}"
-            )
-            self.log("RUN", f"{cmd}")
-            subprocess.run(cmd, shell=True, check=True)
-            self.log("INFO", f"Segmenting completed for {fq_for_sliding}\n")
+            else:
+                self.log("INFO", f"Segmenting reads for {fq_for_sliding}...")
+                cmd = (
+                    f"module load seqkit && "
+                    f"seqkit sliding "
+                    f"-W {self.minlength} "
+                    f"-s {self.minlength} "
+                    f"{fq_for_sliding} "
+                    f"> {out_fq_sliding}"
+                )
+                self.log("RUN", f"{cmd}")
+                subprocess.run(cmd, shell=True, check=True)
+                self.log("INFO", f"Segmenting completed for {fq_for_sliding}\n")
 
         with ThreadPoolExecutor(max_workers=self.tread) as exe:
                       future_map = {
@@ -485,7 +485,7 @@ class Kraken2Runner:
                 else:
                     self.log("INFO", "All samples already processed. Skipping Kraken2.\n")
 
-                # ---------- Generate BIOM tables: one per report ----------
+                # ---------- Generate BIOM tables, one per report ----------
                 print("# Converting Kraken2-style reports to BIOM format with kraken-biom", flush = True)
                 report_files = glob.glob(os.path.join(self.base_bracken, "*.report"))
                 bracken_reports = report_files
