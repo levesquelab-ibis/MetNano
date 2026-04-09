@@ -15,7 +15,7 @@ from parameter_MetNano import *
 ############### Class for preprocessing of raw ONT reads ###############
 class Demultiplexing_qc:
 
-    def __init__(self, folder_no_sample_id, tread, metadata, readmap, qualityscore=10, minlength=1000, unzip=True):
+    def __init__(self, folder_no_sample_id, tread, metadata, readmap, qualityscore=10, minlength=1000, unzip = False):
         self.folder_no_sample_id = folder_no_sample_id.rstrip("/")
         self.last_folder = os.path.basename(self.folder_no_sample_id.rstrip("/"))
         self.qualityscore=qualityscore
@@ -79,7 +79,7 @@ class Demultiplexing_qc:
         else:
             self.log("INFO", "No barcode file exists")
 
-    def run_nanoplot_parallel(self):
+    def run_QC_parallel(self):
         # ---------- Run individual NanoPlot and nanoQC for each samples ----------
         fastqs = glob.glob(os.path.join(self.outputunzfilefastq, "*.fastq"))
         self.log("INFO", f"FASTQ file found: {len(fastqs)}\n")
@@ -88,7 +88,7 @@ class Demultiplexing_qc:
             self.log("WARN", "No FASTQ files found, skipping NanoPlot/nanoQC\n")
             return
 
-        def run_one(fq):
+        def run_QC_single(fq):
             sample = os.path.basename(fq).replace(".fastq", "")
             nanoplot_out = os.path.join(self.outputunzfile,"01_nanoplot" ,f"nanoplot_{sample}")
             nanoQC_out = os.path.join(self.outputunzfile,"02_nanoQC" ,f"nanoQC_{sample}")
@@ -125,7 +125,7 @@ class Demultiplexing_qc:
 
         # ---------- Parallel execution ----------
         with ThreadPoolExecutor(max_workers=self.tread) as exe:
-            futures = [exe.submit(run_one, fq) for fq in fastqs]
+            futures = [exe.submit(run_QC_single, fq) for fq in fastqs]
             for f in as_completed(futures):
                 f.result()  # surface exceptions
 
@@ -267,13 +267,12 @@ class Demultiplexing_qc:
                            future.result()  # crash fast, loud, and clear
 
     def run(self):
-        if not self.unzip:
-            self.run_unzip()
-            self.log("INFO", "Skipping unzip")  # runs if False
+        if self.unzip:
+            self.run_unzip() # runs if unzip = True
         else:
             self.create_ln_file()
         self.run_rename()
-        self.run_nanoplot_parallel()
+        self.run_QC_parallel()
         self.assembly_stat()
         self.run_chopper_parallel()
 
