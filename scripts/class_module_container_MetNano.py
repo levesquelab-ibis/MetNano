@@ -427,21 +427,51 @@ class Kraken2Runner:
                 print()
             self.log("INFO", "Bracken completed for all taxonomic levels\n")
 
+        def run_krakenbiom(self):
+            # ---------- Generate BIOM tables, one per report ----------
+            print("# Converting Kraken2-style reports to BIOM format with kraken-biom", flush = True)
+            report_files = glob.glob(os.path.join(self.base_bracken, "*.report"))
+            bracken_reports = report_files
+            if not bracken_reports:
+                self.log("WARN", "No Bracken reports found. Cannot generate BIOM tables")
+                return
+
+            OUTPUT_DIR_biom = os.path.join(self.out_dir, "08_biom","bracken",f"{self.db_name}")
+            os.makedirs(OUTPUT_DIR_biom, exist_ok=True)
+
+            for report in bracken_reports:
+                sample_name = os.path.splitext(os.path.basename(report))[0]
+                output_file = os.path.join(OUTPUT_DIR_biom, f"{sample_name}.biom")
+
+                # Skip if BIOM already exists
+                if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
+                    self.log("INFO", f"BIOM for {sample_name} already exists")
+                    continue
+
+                # Build command for this single file
+                cmd_biom = (
+                    f"{self.activate_commandbrabiom_env} && "
+                    f"kraken-biom {report} "
+                    f"--fmt json "
+                    f"--output_fp {output_file} "
+                    f"--max D --min S"
+                )
+
+                self.log("INFO", f"Generating BIOM from Kraken2-style reports for {sample_name}...")
+                subprocess.run(cmd_biom, shell=True, check=True)
+
+            self.log("INFO", "BIOM tables generated for all taxonomic levels\n")
+
         def run_all(self, max_workers=1):
-
                 fasta_files = glob.glob(os.path.join(self.fasta_dir, "*.fastq*"))
-
                 if not fasta_files:
                     self.log("WARN", "No FASTQ files found.")
                     return
-
                 files_to_run = []
-
                 for f in fasta_files:
                     sample_name = os.path.splitext(os.path.basename(f))[0]
                     sample_name = re.sub(r"_sliding(_[0-9.]+)?", "", sample_name, flags=re.IGNORECASE)
                     expected_report = os.path.join(self.base_kraken, f"{sample_name}_{self.confidence}.report")
-
                     if not os.path.exists(expected_report) or os.path.getsize(expected_report) == 0:
                         files_to_run.append(f)
 
@@ -449,19 +479,16 @@ class Kraken2Runner:
                 if files_to_run:
                     self.log("INFO", f"{len(files_to_run)} samples need processing\n")
                     self.copy_db_to_ramdisk()
-
                     # Run Kraken2
                     for f in files_to_run:
                         try:
                             self.run_kraken2(f)
                         except subprocess.CalledProcessError as e:
                             self.log("ERROR", f"ERROR processing {f}: {e}")
-
                 else:
                     self.log("INFO", "Kraken2 output files already exist")
                     self.log("INFO", "Not loading DB into memory")
                     self.log("INFO", "Skipping Kraken2\n")
-
                 # Optional DB cleanup here
 
                 # Run Braken
@@ -471,37 +498,10 @@ class Kraken2Runner:
                     except subprocess.CalledProcessError as e:
                         self.log("ERROR", f"ERROR processing {f}: {e}")
 
-                # ---------- Generate BIOM tables, one per report ----------
-                print("# Converting Kraken2-style reports to BIOM format with kraken-biom", flush = True)
-                report_files = glob.glob(os.path.join(self.base_bracken, "*.report"))
-                bracken_reports = report_files
-                if not bracken_reports:
-                    self.log("WARN", "No Bracken reports found. Cannot generate BIOM tables")
-                    return
+                # Run kraken-biom
+                try:
+                    self.run_krakenbiom()
+                except subprocess.CalledProcessError as e:
+                    self.log("ERROR", f"ERROR running kraken-biom: {e}")
 
-                OUTPUT_DIR_biom = os.path.join(self.out_dir, "08_biom","bracken",f"{self.db_name}")
-                os.makedirs(OUTPUT_DIR_biom, exist_ok=True)
-
-                for report in bracken_reports:
-                    sample_name = os.path.splitext(os.path.basename(report))[0]
-                    output_file = os.path.join(OUTPUT_DIR_biom, f"{sample_name}.biom")
-
-                    # Skip if BIOM already exists
-                    if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
-                        self.log("INFO", f"BIOM for {sample_name} already exists")
-                        continue
-
-                    # Build command for this single file
-                    cmd_biom = (
-                        f"{self.activate_commandbrabiom_env} && "
-                        f"kraken-biom {report} "
-                        f"--fmt json "
-                        f"--output_fp {output_file} "
-                        f"--max D --min S"
-                    )
-
-                    self.log("INFO", f"Generating BIOM from Kraken2-style reports for {sample_name}...")
-                    subprocess.run(cmd_biom, shell=True, check=True)
-
-                self.log("INFO", "BIOM tables generated for all taxonomic levels\n")
                 self.log("END", "MetNano is now completed. Bye!")
