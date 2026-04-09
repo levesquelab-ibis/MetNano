@@ -409,7 +409,7 @@ class Kraken2Runner:
 
                 # Skip if already exists
                 if os.path.exists(bracken_output_s) and os.path.getsize(bracken_output_s) > 0:
-                    self.log("INFO", f"Bracken {level_name} file already exists")
+                    self.log("INFO", f"Bracken {level_name} file already exists for sample {sample_name}")
                     continue
 
                 bracken_cmd = (
@@ -421,7 +421,7 @@ class Kraken2Runner:
                     f"-r {self.minlength} "
                     f"-l {level_code}"
                 )
-                self.log("INFO", f"Running Bracken ({level_name})...")
+                self.log("INFO", f"Running Bracken ({level_name}) for sample {sample_name}...")
                 self.log("RUN", bracken_cmd)
                 subprocess.run(bracken_cmd, shell=True, check=True)
                 print()
@@ -458,7 +458,7 @@ class Kraken2Runner:
                             self.log("ERROR", f"ERROR processing {f}: {e}")
 
                 else:
-                    self.log("INFO", "Kraken2 samples already exist")
+                    self.log("INFO", "Kraken2 output files already exist")
                     self.log("INFO", "Not loading DB into memory")
                     self.log("INFO", "Skipping Kraken2\n")
 
