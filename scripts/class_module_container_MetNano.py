@@ -35,7 +35,7 @@ class Preprocessing:
         self.activate_commandnanoQC_env= f"{CONDA_SOURCE_private} && conda activate {nanoQC_env}"
         self.activate_commandchopper_env= f"{CONDA_SOURCE_private} && conda activate {chopper_env}"
         self.outputunzfile = f"{self.current_dir}"
-        self.outputunzfilefastq= os.path.join(self.outputunzfile, "00_fastq_demultiplexed")
+        self.outputunzfilefastq= os.path.join(self.outputunzfile, "00_demultiplexed_fastqs")
         self.activate_commandnanoplot_env = f"{CONDA_SOURCE_private} && conda activate {nanoplot_env}"
         self.activate_commandminimap_env = f"{CONDA_SOURCE_private} && conda activate {minimap2_env}"
 
@@ -63,12 +63,12 @@ class Preprocessing:
         print("# Demultiplexing", flush=True)
         if not os.path.exists(self.outputunzfilefastq):
             self.log("INFO", "Demultiplexing step not set with --unzip parameter.")
-            self.log("INFO Direct copy link from original file to working directory")
+            self.log("INFO", "Direct copy link from original file to working directory")
             os.makedirs(self.outputunzfilefastq, exist_ok=True)
             ln_cmd= f"ln -s {self.folder_no_sample_id}/*.fastq* {self.outputunzfilefastq}/ "
             self.log("RUN", f"{ln_cmd} ")
             subprocess.run(ln_cmd, shell=True, check=True)
-            self.log("INFO", "Symbolic link created  into working directory\n")
+            self.log("INFO", "Symbolic link created into working directory\n")
         elif os.path.exists(self.outputunzfilefastq):
             self.log("INFO", "Symbolic link already exists\n")
 
@@ -95,8 +95,8 @@ class Preprocessing:
 
         def run_QC_single(fq):
             sample = os.path.basename(fq).replace(".fastq", "")
-            nanoplot_out = os.path.join(self.outputunzfile,"01_nanoplot" ,f"nanoplot_{sample}")
-            nanoQC_out = os.path.join(self.outputunzfile,"02_nanoQC" ,f"nanoQC_{sample}")
+            nanoplot_out = os.path.join(self.outputunzfile,"01-NanoPlot" ,f"NanoPlot_{sample}")
+            nanoQC_out = os.path.join(self.outputunzfile,"02-nanoQC" ,f"nanoQC_{sample}")
 
             # ---------- NanoPlot ----------
             print("# Quality control with NanoPlot", flush = True)
@@ -110,9 +110,9 @@ class Preprocessing:
                     f"-t 1"
                 )
                 self.log("INFO", f"Analyzing sample {sample}...")
-                self.log("RUN", "{nanoplot_cmd}")
+                self.log("RUN", f"{nanoplot_cmd}")
                 subprocess.run(nanoplot_cmd, shell=True, check=True)
-                self.log("INFO", f"NanoPlot completed for sample {sample}")
+                self.log("INFO", f"NanoPlot completed for sample {sample}\n")
 
             # ---------- nanoQC ----------
             print("# Quality control with nanoQC", flush = True)
@@ -137,7 +137,7 @@ class Preprocessing:
     def assembly_stat(self):
         # ---------- Generate assembly stats files for all samples in ONT folder ----------
         print(f"# Sequencing statistics with assembly-stats", flush=True)
-        out_dir = os.path.join(self.outputunzfile,"03_statistics" )
+        out_dir = os.path.join(self.outputunzfile,"03-assembly-stats" )
         out_file = os.path.join(out_dir ,"fastq_metrics.txt")
         os.makedirs(out_dir, exist_ok=True)
         if os.path.isfile(out_file):
@@ -155,9 +155,9 @@ class Preprocessing:
         filelist_fastQ = glob.glob(os.path.join(self.outputunzfilefastq, "*.fastq*"))
 
         # Output directories
-        self.trimmed_dir = os.path.join(self.outputunzfile, "04_trimmed")
-        self.unmapped_dir = os.path.join(self.outputunzfile, "04a_unmapped")
-        self.sliding_dir = os.path.join(self.outputunzfile, "05_sliding")
+        self.trimmed_dir = os.path.join(self.outputunzfile, "04-chopper")
+        self.unmapped_dir = os.path.join(self.outputunzfile, "04a-minimap2")
+        self.sliding_dir = os.path.join(self.outputunzfile, "05-SeqKit")
         os.makedirs(self.trimmed_dir, exist_ok=True)
         os.makedirs(self.sliding_dir, exist_ok=True)
 
@@ -299,9 +299,9 @@ class TaxonomicClassification:
             self.confidence = confidence
             self.minlength=minlength
             self.temp_db_path = os.path.join("/dev/shm", self.db_name)
-            self.base_kraken = os.path.join(self.out_dir, "06_kraken2", self.db_name)
-            self.base_bracken = os.path.join(self.out_dir, "07_bracken", self.db_name)
-            self.base_biom = os.path.join(self.out_dir, "08_biom", self.db_name)
+            self.base_kraken = os.path.join(self.out_dir, "06-Kraken2", self.db_name)
+            self.base_bracken = os.path.join(self.out_dir, "07-Bracken", self.db_name)
+            self.base_biom = os.path.join(self.out_dir, "08-kraken-biom", self.db_name)
             self.activate_commandkraken_env= f"{CONDA_SOURCE_private} && conda activate {kraken_env}"
             self.activate_commandbracken_env= f"{CONDA_SOURCE_private} && conda activate {bracken_env}"
             self.activate_commandbrabiom_env = f"{CONDA_SOURCE_private} && conda activate {kraken_biom_env}"
@@ -437,10 +437,10 @@ class TaxonomicClassification:
             report_files = glob.glob(os.path.join(self.base_bracken, "*.report"))
             bracken_reports = report_files
             if not bracken_reports:
-                self.log("WARN", "No Bracken reports found. Cannot generate BIOM tables")
+                self.log("ERROR", "No Bracken reports found. Cannot generate BIOM tables")
                 return
 
-            OUTPUT_DIR_biom = os.path.join(self.out_dir, "08_biom","bracken",f"{self.db_name}")
+            OUTPUT_DIR_biom = os.path.join(self.out_dir, "08-kraken-biom", f"{self.db_name}")
             os.makedirs(OUTPUT_DIR_biom, exist_ok=True)
 
             for report in bracken_reports:
@@ -469,7 +469,7 @@ class TaxonomicClassification:
         def run_all(self, max_workers=1):
                 fasta_files = glob.glob(os.path.join(self.fasta_dir, "*.fastq*"))
                 if not fasta_files:
-                    self.log("WARN", "No FASTQ files found.")
+                    self.log("ERROR", "No FASTQ files found.")
                     return
                 files_to_run = []
                 for f in fasta_files:
