@@ -336,10 +336,8 @@ class Kraken2Runner:
             sample_name = os.path.splitext(os.path.basename(fasta_file))[0]
             sample_name = re.sub(r"_sliding(_[0-9.]+)?", "", sample_name, flags=re.IGNORECASE)
             prefix = f"{sample_name}_{self.confidence}"
-
             kraken_output = os.path.join(self.base_kraken, f"{prefix}.all")
             kraken_report = os.path.join(self.base_kraken, f"{prefix}.report")
-
             bracken_output = os.path.join(self.base_bracken, f"{prefix}.bracken")
             bracken_report = os.path.join(self.base_bracken, f"{prefix}.bracken.report")
 
@@ -379,8 +377,17 @@ class Kraken2Runner:
                 if not file_exists_and_not_empty(kraken_output) or not file_exists_and_not_empty(kraken_report):
                     raise RuntimeError(f"[ERROR] Kraken2 run did not produce expected output files for {prefix}")
 
+        def run_bracken(self, fasta_file):
             # ----- Bracken (all taxonomic levels) -----
             print("# Taxon abundance estimation with Bracken", flush = True)
+            sample_name = os.path.splitext(os.path.basename(fasta_file))[0]
+            sample_name = re.sub(r"_sliding(_[0-9.]+)?", "", sample_name, flags=re.IGNORECASE)
+            prefix = f"{sample_name}_{self.confidence}"
+            kraken_output = os.path.join(self.base_kraken, f"{prefix}.all")
+            kraken_report = os.path.join(self.base_kraken, f"{prefix}.report")
+            bracken_output = os.path.join(self.base_bracken, f"{prefix}.bracken")
+            bracken_report = os.path.join(self.base_bracken, f"{prefix}.bracken.report")
+
             BRACKEN_LEVELS = {
                 "species": "S",
                 "genus": "G",
@@ -438,21 +445,31 @@ class Kraken2Runner:
                     if not os.path.exists(expected_report) or os.path.getsize(expected_report) == 0:
                         files_to_run.append(f)
 
-                # Only load RAM + run Kraken2 if needed
+                # Only load RAM if needed
                 if files_to_run:
                     self.log("INFO", f"{len(files_to_run)} samples need processing\n")
                     self.copy_db_to_ramdisk()
 
+                    # Run Kraken2
                     for f in files_to_run:
                         try:
                             self.run_kraken2(f)
                         except subprocess.CalledProcessError as e:
                             self.log("ERROR", f"ERROR processing {f}: {e}")
 
-                    # Optional cleanup here
-
                 else:
-                    self.log("INFO", "All samples already processed. Skipping Kraken2.\n")
+                    self.log("INFO", "Kraken2 samples already exist")
+                    self.log("INFO", "Not loading DB into memory")
+                    self.log("INFO", "Skipping Kraken2\n")
+
+                # Optional DB cleanup here
+
+                # Run Braken
+                for f in fasta_files:
+                    try:
+                        self.run_bracken(f)
+                    except subprocess.CalledProcessError as e:
+                        self.log("ERROR", f"ERROR processing {f}: {e}")
 
                 # ---------- Generate BIOM tables, one per report ----------
                 print("# Converting Kraken2-style reports to BIOM format with kraken-biom", flush = True)
