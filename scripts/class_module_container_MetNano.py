@@ -13,8 +13,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from parameter_MetNano import *
 
 ############### Class for preprocessing of raw ONT reads ###############
-class Demultiplexing_qc:
-
+class Preprocessing:
+    """
+    Python class allowing the computation of sequencing statistics quality
+    control, and filtering from from raw reads, followed by read
+    segmentation to homogenous length. Optionnaly, filtered reads can also
+    be mapped onto a reference genome to deplete host reads.
+    """
     def __init__(self, folder_no_sample_id, tread, metadata, readmap, qualityscore=10, minlength=1000, unzip = False):
         self.folder_no_sample_id = folder_no_sample_id.rstrip("/")
         self.last_folder = os.path.basename(self.folder_no_sample_id.rstrip("/"))
@@ -266,7 +271,7 @@ class Demultiplexing_qc:
                            fq = future_map[future]
                            future.result()  # crash fast, loud, and clear
 
-    def run(self):
+    def run_all(self):
         if self.unzip:
             self.run_unzip() # runs if unzip = True
         else:
@@ -277,10 +282,12 @@ class Demultiplexing_qc:
         self.run_chopper_parallel()
 
 ########## Class for read taxonomic classification and abundance estimation ##########
-class Kraken2Runner:
+class TaxonomicClassification:
         """
-        Python class to run Kraken2 on multiple FASTA files,
-        using a temporary DB copy in RAM (/dev/shm) for speed.
+        Python class allowing the assignment of taxonomic classification to reads with
+        Kraken2 using a temporary DB copy in RAM (/dev/shm) for speed, the estimatation
+        of taxa abundance with Bracken and the conversion of Kraken2-style reports into
+        BIOM tables with kraken-biom.
         """
         def __init__(self, db_path, db_name, fasta_dir, out_dir,kraken_env, bracken_env,
                      threads=6, confidence=0.01 ,minlength=300):

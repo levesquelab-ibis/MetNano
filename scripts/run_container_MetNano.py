@@ -52,16 +52,23 @@ print()
 sys.path.append('/mnt/ibis/rclevesq/software/nanobatch_wgs/lspq_validation/src')
 
 # Demultiplexing and QC
-unzup = Demultiplexing_qc( folder_nanopore,6,list_association,readmap,qualityscore,minlength)
-unzup.run()
+preprocessed = Preprocessing(
+    folder_nanopore,
+    6,
+    list_association,
+    readmap,
+    qualityscore,
+    minlength)
 
-sliding_folder = unzup.sliding_dir
-trimmed_folder = unzup.trimmed_dir
-outputunzfile = unzup.outputunzfile
+preprocessed.run_all()
+
+sliding_folder = preprocessed.sliding_dir
+trimmed_folder = preprocessed.trimmed_dir
+outputunzfile = preprocessed.outputunzfile
 
 kraken_input_dir = os.path.join(outputunzfile)
 
-runner = Kraken2Runner(
+classified = TaxonomicClassification(
     db_path=database,
     db_name=database_name,
     fasta_dir=sliding_folder,
@@ -72,4 +79,4 @@ runner = Kraken2Runner(
     bracken_env = bracken_env
 )
 
-runner.run_all()
+classified.run_all()
