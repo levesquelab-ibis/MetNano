@@ -27,9 +27,9 @@ args = parser.parse_args()
 
 # Access the arguments
 folder_nanopore = args.folder_nanopore
-list_association=args.list_association
-minlength=args.minlength
-qualityscore=args.qualityscore
+list_association = args.list_association
+minlength = args.minlength
+qualityscore = args.qualityscore
 force_set = args.force_set
 run_quality = args.list_association
 confidence= args.confidence
@@ -74,7 +74,8 @@ classified = TaxonomicClassification(
     fasta_dir=sliding_folder,
     out_dir=kraken_input_dir,
     threads=6,
-    confidence=confidence
+    confidence=confidence,
+    minlength=minlength
 )
 
 classified.run_all()

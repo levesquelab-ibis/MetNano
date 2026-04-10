@@ -20,12 +20,12 @@ class Preprocessing:
     segmentation to homogenous length. Optionnaly, filtered reads can also
     be mapped onto a reference genome to deplete host reads.
     """
-    def __init__(self, folder_no_sample_id, tread, metadata, readmap, qualityscore=10, minlength=1000, unzip = False):
+    def __init__(self, folder_no_sample_id, thread, metadata, readmap, qualityscore=15, minlength=300, unzip = False):
         self.folder_no_sample_id = folder_no_sample_id.rstrip("/")
         self.last_folder = os.path.basename(self.folder_no_sample_id.rstrip("/"))
         self.qualityscore=qualityscore
         self.minlength=minlength
-        self.tread = tread
+        self.thread = thread
         self.readmap = readmap
         self.metadata = metadata
         self.unzip=unzip
@@ -42,7 +42,7 @@ class Preprocessing:
         if not os.path.exists(self.outputunzfilefastq):
             self.log("INFO", "Folder unzip {self.outputunzfilefastq} is missing, running {unzip_barcode_script}")
             self.log("INFO", "Running unzip_barcode_script ...")
-            unz_cmd = f"{unzip_barcode_script} {self.folder_no_sample_id} {self.tread}"
+            unz_cmd = f"{unzip_barcode_script} {self.folder_no_sample_id} {self.thread}"
             self.log("RUN", "{unz_cmd}")
             subprocess.run(unz_cmd, shell=True, check=True)
             self.log("INFO", "Unzip and demultiplexing done")
@@ -123,7 +123,7 @@ class Preprocessing:
                 self.log("INFO", f"nanoQC completed for sample {sample}\n")
 
         # ---------- Parallel execution ----------
-        with ThreadPoolExecutor(max_workers=self.tread) as exe:
+        with ThreadPoolExecutor(max_workers=self.thread) as exe:
             futures = [exe.submit(run_QC_single, fq) for fq in fastqs]
             for f in as_completed(futures):
                 f.result()  # surface exceptions
@@ -253,7 +253,7 @@ class Preprocessing:
                 subprocess.run(cmd, shell=True, check=True)
                 self.log("INFO", f"Segmenting completed for {fq_for_sliding}\n")
 
-        with ThreadPoolExecutor(max_workers=self.tread) as exe:
+        with ThreadPoolExecutor(max_workers=self.thread) as exe:
                       future_map = {
                            exe.submit(process_fastq, fq): fq
                            for fq in filelist_fastQ
@@ -280,14 +280,14 @@ class TaxonomicClassification:
         of taxa abundance with Bracken and the conversion of Kraken2-style reports into
         BIOM tables with kraken-biom.
         """
-        def __init__(self, db_path, db_name, fasta_dir, out_dir, threads=6, confidence=0.01, minlength=300):
+        def __init__(self, db_path, db_name, fasta_dir, out_dir, threads=6, confidence=0.1, minlength=300):
             self.db_path = db_path
             self.db_name = db_name
             self.fasta_dir = fasta_dir
             self.out_dir = out_dir
             self.threads = threads
             self.confidence = confidence
-            self.minlength=minlength
+            self.minlength = minlength
             self.temp_db_path = os.path.join("/dev/shm", self.db_name)
             self.base_kraken = os.path.join(self.out_dir, "06-Kraken2", self.db_name)
             self.base_bracken = os.path.join(self.out_dir, "07-Bracken", self.db_name)
