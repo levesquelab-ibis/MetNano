@@ -74,9 +74,7 @@ classified = TaxonomicClassification(
     fasta_dir=sliding_folder,
     out_dir=kraken_input_dir,
     threads=6,
-    confidence=confidence,
-    kraken_env = kraken_env,
-    bracken_env = bracken_env
+    confidence=confidence
 )
 
 classified.run_all()

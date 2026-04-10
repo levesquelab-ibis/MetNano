@@ -28,16 +28,11 @@ class Preprocessing:
         self.tread = tread
         self.readmap = readmap
         self.metadata = metadata
-        self.nanoQC_env = nanoQC_env
         self.unzip=unzip
         self.current_dir = os.path.abspath(".")
         self.date = datetime.now().strftime('%Y-%m-%d')
-        self.activate_commandnanoQC_env= f"{CONDA_SOURCE_private} && conda activate {nanoQC_env}"
-        self.activate_commandchopper_env= f"{CONDA_SOURCE_private} && conda activate {chopper_env}"
         self.outputunzfile = f"{self.current_dir}"
         self.outputunzfilefastq= os.path.join(self.outputunzfile, "00_demultiplexed_fastqs")
-        self.activate_commandnanoplot_env = f"{CONDA_SOURCE_private} && conda activate {nanoplot_env}"
-        self.activate_commandminimap_env = f"{CONDA_SOURCE_private} && conda activate {minimap2_env}"
 
     def log(self, type, message):
             print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [{type}] {message}", flush=True)
@@ -104,7 +99,7 @@ class Preprocessing:
                 self.log("INFO", f"NanoPlot already exists for sample {sample}\n")
             else:
                 nanoplot_cmd = (
-                    f"{self.activate_commandnanoplot_env}   && NanoPlot --fastq {fq} "
+                    f"NanoPlot --fastq {fq} "
                     f"--outdir {nanoplot_out} "
                     f"--prefix {sample}_ "
                     f"-t 1"
@@ -120,7 +115,6 @@ class Preprocessing:
                 self.log("INFO", f"nanoQC already exists for sample {sample}\n")
             else:
                 nanoQC_cmd = (
-                    f"{self.activate_commandnanoQC_env} && "
                     f"nanoQC {fq} --outdir {nanoQC_out}"
                 )
                 self.log("INFO", f"Analyzing sample {sample}...")
@@ -188,7 +182,6 @@ class Preprocessing:
             if not os.path.exists(out_fq):
                 self.log("INFO", f"Trimming file {base_name}...")
                 cmd = (
-                    f"{self.activate_commandchopper_env} && "
                     f"cat {fq} | "
                     f"chopper --headcrop {head_trim} --tailcrop {tail_trim} -t 1 | "
                     f"chopper -q {self.qualityscore} -l {self.minlength} -t 1 "
@@ -213,7 +206,7 @@ class Preprocessing:
                     # ----- Run minimap2 alignment -----
                     print(f"# Mapping reads to reference genome with minimap2", flush = True)
                     cmd_map = (
-                        f" {self.activate_commandminimap_env} &&  minimap2 -a -x {mapping_preset} -t 1 "
+                        f"minimap2 -a -x {mapping_preset} -t 1 "
                         f"{self.readmap} {out_fq} "
                         f"> {unmapped_fq.replace('_unmapped.fastq', '_alignment.sam')}"
                     )
@@ -224,7 +217,6 @@ class Preprocessing:
                     # ----- Extract unmapped reads -----
                     print(f"# Extraction of unmapped reads with samtools", flush = True)
                     cmd_samtools = (
-                        f"conda deactivate && conda activate samtools && "
                         f"samtools view -bf 4 "
                         f"{unmapped_fq.replace('_unmapped.fastq', '_alignment.sam')} "
                         f"> {unmapped_fq.replace('_unmapped.fastq', '_unmapped.bam')} && "
@@ -251,7 +243,6 @@ class Preprocessing:
             else:
                 self.log("INFO", f"Segmenting reads for {fq_for_sliding}...")
                 cmd = (
-                    f"module load seqkit && "
                     f"seqkit sliding "
                     f"-W {self.minlength} "
                     f"-s {self.minlength} "
@@ -289,8 +280,7 @@ class TaxonomicClassification:
         of taxa abundance with Bracken and the conversion of Kraken2-style reports into
         BIOM tables with kraken-biom.
         """
-        def __init__(self, db_path, db_name, fasta_dir, out_dir,kraken_env, bracken_env,
-                     threads=6, confidence=0.01 ,minlength=300):
+        def __init__(self, db_path, db_name, fasta_dir, out_dir, threads=6, confidence=0.01, minlength=300):
             self.db_path = db_path
             self.db_name = db_name
             self.fasta_dir = fasta_dir
@@ -302,9 +292,6 @@ class TaxonomicClassification:
             self.base_kraken = os.path.join(self.out_dir, "06-Kraken2", self.db_name)
             self.base_bracken = os.path.join(self.out_dir, "07-Bracken", self.db_name)
             self.base_biom = os.path.join(self.out_dir, "08-kraken-biom", self.db_name)
-            self.activate_commandkraken_env= f"{CONDA_SOURCE_private} && conda activate {kraken_env}"
-            self.activate_commandbracken_env= f"{CONDA_SOURCE_private} && conda activate {bracken_env}"
-            self.activate_commandbrabiom_env = f"{CONDA_SOURCE_private} && conda activate {kraken_biom_env}"
 
             #os.makedirs(self.out_dir, exist_ok=True)
 
@@ -359,8 +346,6 @@ class TaxonomicClassification:
 
                 # ----- Kraken2 -----
                 kraken_cmd = (
-                    #f"{self.activate_commandkraken_env} && "
-                    f"module load kraken && "
                     f"kraken2 "
                     f"--db {self.temp_db_path} "
                     f"--threads 1 "
@@ -416,7 +401,7 @@ class TaxonomicClassification:
                     continue
 
                 bracken_cmd = (
-                    f"{self.activate_commandbracken_env} && bracken "
+                    f"bracken "
                     f"-d {self.db_path} "
                     f"-i {kraken_report} "
                     f"-o {bracken_output_s} "
@@ -454,7 +439,6 @@ class TaxonomicClassification:
 
                 # Build command for this single file
                 cmd_biom = (
-                    f"{self.activate_commandbrabiom_env} && "
                     f"kraken-biom {report} "
                     f"--fmt json "
                     f"--output_fp {output_file} "
