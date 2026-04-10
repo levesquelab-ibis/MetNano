@@ -73,12 +73,15 @@ class Preprocessing:
     def run_rename(self):
         # ---------- Rename file with metadata provided ----------
         barcode_fastqs = glob.glob(os.path.join(self.outputunzfilefastq, "*barcode*.fastq*"))
+        fastqs = glob.glob(os.path.join(self.outputunzfilefastq, "*.fastq"))
         print(f"# Renaming barcodes", flush=True)
         if barcode_fastqs:
             rename_cmd = f"{rename_barcodes_w_sheet} {self.metadata}"
             self.log("RUN", f"{rename_cmd}")
             subprocess.run(rename_cmd, shell=True, check=True, cwd=self.outputunzfilefastq)
             self.log("INFO", "Renaming samples with metadata done\n")
+        elif fastqs and not barcode_fastqs:
+            self.log("INFO", "FASTQ files already renamed")
         else:
             self.log("ERROR", "No barcode file exists")
             self.log("ERROR", "Check your FASTQ directory")
@@ -156,7 +159,7 @@ class Preprocessing:
 
         # Output directories
         self.trimmed_dir = os.path.join(self.outputunzfile, "04-chopper")
-        self.unmapped_dir = os.path.join(self.outputunzfile, "04a-minimap2")
+        self.minimap2_dir = os.path.join(self.outputunzfile, "04b-minimap2")
         self.sliding_dir = os.path.join(self.outputunzfile, "05-SeqKit")
         os.makedirs(self.trimmed_dir, exist_ok=True)
         os.makedirs(self.sliding_dir, exist_ok=True)
@@ -202,7 +205,7 @@ class Preprocessing:
             # ----- STEP 1b: optional minimap2 + samtools if readmap parameter is provided -----
             if hasattr(self, 'readmap') and self.readmap not in [None, "None"]:
                 unmapped_fq = os.path.join(
-                    self.unmapped_dir,
+                    self.minimap2_dir,
                     base_name.replace(".fastq.gz", "")
                              .replace(".fastq", "")
                              + "_unmapped.fastq"
@@ -211,6 +214,7 @@ class Preprocessing:
                 if not os.path.exists(unmapped_fq):
                     # ----- Run minimap2 alignment -----
                     print(f"# Mapping reads to reference genome with minimap2", flush = True)
+                    os.makedirs(self.minimap2_dir, exist_ok=True)
                     cmd_map = (
                         f"minimap2 -a -x {mapping_preset} -t 1 "
                         f"{self.readmap} {out_fq} "
