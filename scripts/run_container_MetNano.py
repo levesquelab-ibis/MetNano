@@ -18,9 +18,10 @@ parser.add_argument("-d", "--database", help="quality seq.")
 # Optional arguments with default values
 parser.add_argument("-l", "--minlength", help="minlength seq.")
 parser.add_argument("-q", "--qualityscore", help="quality seq.")
-parser.add_argument("-c", "--confidence", help="quality seq.")
+parser.add_argument("-c", "--confidence", help="kraken2 confidence score.")
 parser.add_argument("-m", "--readmap", help="mapping to ref.")
 parser.add_argument("-f", "--force_set", help="Force set.")
+parser.add_argument("-u", "--unzip", help="unzip fastq.")
 
 # Parse the arguments
 args = parser.parse_args()
@@ -32,9 +33,10 @@ minlength = args.minlength
 qualityscore = args.qualityscore
 force_set = args.force_set
 run_quality = args.list_association
-confidence= args.confidence
-database= args.database
-readmap= args.readmap
+confidence = args.confidence
+database = args.database
+readmap = args.readmap
+unzip = args.unzip
 
 database_name= os.path.basename(os.path.normpath(database))
 
@@ -46,6 +48,7 @@ print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] minqualit
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] read mapping on host genome: {readmap}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] kraken2 confidence score: {confidence}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] kraken2 database: {database}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] unzip: {unzip}")
 print()
 
 # Add the directory containing your scripts to the Python path
@@ -58,7 +61,8 @@ preprocessed = Preprocessing(
     list_association,
     readmap,
     qualityscore,
-    minlength)
+    minlength,
+    unzip)
 
 preprocessed.run_all()
 

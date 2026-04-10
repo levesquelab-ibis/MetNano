@@ -39,17 +39,20 @@ class Preprocessing:
 
     def run_unzip(self):
         # ---------- Unzip and demultiplex barcoded samples ----------
+        print("# Unzip FASTQ files", flush = True)
         if not os.path.exists(self.outputunzfilefastq):
             self.log("INFO", "Folder unzip {self.outputunzfilefastq} is missing, running {unzip_barcode_script}")
             self.log("INFO", "Running unzip_barcode_script ...")
             unz_cmd = f"{unzip_barcode_script} {self.folder_no_sample_id} {self.thread}"
-            self.log("RUN", "{unz_cmd}")
+            self.log("RUN", f"{unz_cmd}")
             subprocess.run(unz_cmd, shell=True, check=True)
             self.log("INFO", "Unzip and demultiplexing done")
-            os.makedirs(self.outputunzfilefasta, exist_ok=True)
-            unz_cmd = f"mv *.fastq  {self.outputunzfilefastq}"
+            os.makedirs(self.outputunzfilefastq, exist_ok=True)
+            unz_cmd = f"mv {self.outputunzfilefastq}/../*_unzipped/*.fastq {self.outputunzfilefastq}"
             subprocess.run(unz_cmd, shell=True, check=True)
-            self.log("INFO", "move file to {self.outputunzfilefastq}")
+            rm_cmd = f"rmdir {self.outputunzfilefastq}/../*_unzipped/"
+            subprocess.run(rm_cmd, shell=True, check=True)
+            self.log("INFO", f"Moved file to {self.outputunzfilefastq}\n")
         else:
             self.log("INFO", "Folder exists, skipping step")
 
@@ -77,7 +80,10 @@ class Preprocessing:
             subprocess.run(rename_cmd, shell=True, check=True, cwd=self.outputunzfilefastq)
             self.log("INFO", "Renaming samples with metadata done\n")
         else:
-            self.log("INFO", "No barcode file exists")
+            self.log("ERROR", "No barcode file exists")
+            self.log("ERROR", "Check your FASTQ directory")
+            self.log("END", "Exiting MetNano")
+            sys.exit(1)
 
     def run_QC_parallel(self):
         # ---------- Run individual NanoPlot and nanoQC for each samples ----------
@@ -263,7 +269,7 @@ class Preprocessing:
                            future.result()  # crash fast, loud, and clear
 
     def run_all(self):
-        if self.unzip:
+        if self.unzip == "True":
             self.run_unzip() # runs if unzip = True
         else:
             self.create_ln_file()
