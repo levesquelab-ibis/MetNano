@@ -394,7 +394,7 @@ class TaxonomicClassification:
                 "class": "C",
                 "phylum": "P"
             }
-            bracken_outputs = []
+            exceptions = []
             for level_name, level_code in BRACKEN_LEVELS.items():
                 bracken_output_s = os.path.join(
                     self.base_bracken,
@@ -419,11 +419,18 @@ class TaxonomicClassification:
                     f"-r {self.minlength} "
                     f"-l {level_code}"
                 )
-                self.log("INFO", f"Running Bracken ({level_name}) for sample {sample_name}...")
+                self.log("INFO", f"Running Bracken at {level_name} level for sample {sample_name}...")
                 self.log("RUN", bracken_cmd)
-                subprocess.run(bracken_cmd, shell=True, check=True)
+                try:
+                    subprocess.run(bracken_cmd, shell=True, check=True)
+                except subprocess.CalledProcessError as e:
+                    self.log("ERROR", f"Bracken failed at {level_name} level for sample {sample_name}")
+                    exceptions.append(level_name)
                 print()
-            self.log("INFO", "Bracken completed for all taxonomic levels\n")
+            if not exceptions:
+                self.log("INFO", "Bracken completed for all taxonomic levels\n")
+            else:
+                self.log("INFO", f"Bracken completed for all taxonomic levels, except for {', '.join(exceptions)} levels\n")
 
         def run_krakenbiom(self):
             # ---------- Generate BIOM tables, one per report ----------
@@ -434,10 +441,8 @@ class TaxonomicClassification:
             if not bracken_reports:
                 self.log("ERROR", "No Bracken reports found. Cannot generate BIOM tables")
                 return
-
             OUTPUT_DIR_biom = os.path.join(self.out_dir, "08-kraken-biom", f"{self.db_name}")
             os.makedirs(OUTPUT_DIR_biom, exist_ok=True)
-
             for report in bracken_reports:
                 sample_name = os.path.splitext(os.path.basename(report))[0]
                 output_file = os.path.join(OUTPUT_DIR_biom, f"{sample_name}.biom")
@@ -454,11 +459,10 @@ class TaxonomicClassification:
                     f"--output_fp {output_file} "
                     f"--max D --min S"
                 )
-
                 self.log("INFO", f"Generating BIOM from Kraken2-style reports for {sample_name}...")
                 subprocess.run(cmd_biom, shell=True, check=True)
 
-            self.log("INFO", "BIOM tables generated for all taxonomic levels\n")
+            self.log("INFO", f"BIOM tables generated\n")
 
         def run_all(self, max_workers=1):
                 fasta_files = glob.glob(os.path.join(self.fasta_dir, "*.fastq*"))
