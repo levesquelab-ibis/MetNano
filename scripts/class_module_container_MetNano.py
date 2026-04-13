@@ -88,6 +88,21 @@ class Preprocessing:
             self.log("END", "Exiting MetNano")
             sys.exit(1)
 
+    def assembly_stat(self):
+        # ---------- Generate assembly stats files for all samples in ONT folder ----------
+        print(f"# Sequencing statistics with assembly-stats", flush=True)
+        out_dir = os.path.join(self.outputunzfile,"01-assembly-stats" )
+        out_file = os.path.join(out_dir ,"assembly-stats.tsv")
+        os.makedirs(out_dir, exist_ok=True)
+        if os.path.isfile(out_file) and os.path.getsize(out_file) > 0:
+            self.log("INFO", "File assembly-stats.tsv already exists\n")
+            return
+        self.log("INFO", f"Computing sequencing reads statistics...")
+        cmd = f"assembly-stats -t {self.outputunzfilefastq}/*.fastq > {out_file}  "
+        self.log("RUN", f" {cmd} in {self.outputunzfile}")
+        subprocess.run(cmd, shell=True, check=True, cwd=self.outputunzfile)
+        self.log("INFO", f"Sequencing statistics written to {out_file}\n")
+
     def run_QC_parallel(self):
         # ---------- Run individual NanoPlot and nanoQC for each samples ----------
         fastqs = glob.glob(os.path.join(self.outputunzfilefastq, "*.fastq"))
@@ -99,8 +114,8 @@ class Preprocessing:
 
         def run_QC_single(fq):
             sample = os.path.basename(fq).replace(".fastq", "")
-            nanoplot_out = os.path.join(self.outputunzfile,"01-NanoPlot" ,f"NanoPlot_{sample}")
-            nanoQC_out = os.path.join(self.outputunzfile,"02-nanoQC" ,f"nanoQC_{sample}")
+            nanoplot_out = os.path.join(self.outputunzfile,"02-NanoPlot" ,f"NanoPlot_{sample}")
+            nanoQC_out = os.path.join(self.outputunzfile,"03-nanoQC" ,f"nanoQC_{sample}")
 
             # ---------- NanoPlot ----------
             print("# Quality control with NanoPlot", flush = True)
@@ -136,21 +151,6 @@ class Preprocessing:
             futures = [exe.submit(run_QC_single, fq) for fq in fastqs]
             for f in as_completed(futures):
                 f.result()  # surface exceptions
-
-    def assembly_stat(self):
-        # ---------- Generate assembly stats files for all samples in ONT folder ----------
-        print(f"# Sequencing statistics with assembly-stats", flush=True)
-        out_dir = os.path.join(self.outputunzfile,"03-assembly-stats" )
-        out_file = os.path.join(out_dir ,"assembly-stats.tsv")
-        os.makedirs(out_dir, exist_ok=True)
-        if os.path.isfile(out_file) and os.path.getsize(out_file) > 0:
-            self.log("INFO", "File assembly-stats.tsv already exists\n")
-            return
-        self.log("INFO", f"Computing sequencing reads statistics...")
-        cmd = f"assembly-stats -t {self.outputunzfilefastq}/*.fastq > {out_file}  "
-        self.log("RUN", f" {cmd} in {self.outputunzfile}")
-        subprocess.run(cmd, shell=True, check=True, cwd=self.outputunzfile)
-        self.log("INFO", f"Sequencing statistics written to {out_file}\n")
 
     def run_chopper_parallel(self):
         # ---------- Run chopper and seqkit  with selected parameters (see parameter_MetNano.py file) ----------
@@ -278,8 +278,8 @@ class Preprocessing:
         else:
             self.create_ln_file()
         self.run_rename()
-        self.run_QC_parallel()
         self.assembly_stat()
+        self.run_QC_parallel()
         self.run_chopper_parallel()
 
 ########## Class for read taxonomic classification and abundance estimation ##########
