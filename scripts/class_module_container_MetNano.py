@@ -141,16 +141,16 @@ class Preprocessing:
         # ---------- Generate assembly stats files for all samples in ONT folder ----------
         print(f"# Sequencing statistics with assembly-stats", flush=True)
         out_dir = os.path.join(self.outputunzfile,"03-assembly-stats" )
-        out_file = os.path.join(out_dir ,"fastq_metrics.txt")
+        out_file = os.path.join(out_dir ,"assembly-stats.tsv")
         os.makedirs(out_dir, exist_ok=True)
-        if os.path.isfile(out_file):
-            self.log("INFO", "File assembly_stats.txt already exists\n")
+        if os.path.isfile(out_file) and os.path.getsize(out_file) > 0:
+            self.log("INFO", "File assembly-stats.tsv already exists\n")
             return
         self.log("INFO", f"Computing sequencing reads statistics...")
-        cmd = f"{assembly_stats} -t {self.outputunzfilefastq}/*.fastq > {out_file}  "
+        cmd = f"assembly-stats -t {self.outputunzfilefastq}/*.fastq > {out_file}  "
         self.log("RUN", f" {cmd} in {self.outputunzfile}")
         subprocess.run(cmd, shell=True, check=True, cwd=self.outputunzfile)
-        self.log("INFO", f"Sequencing stats written to {out_file}\n")
+        self.log("INFO", f"Sequencing statistics written to {out_file}\n")
 
     def run_chopper_parallel(self):
         # ---------- Run chopper and seqkit  with selected parameters (see parameter_MetNano.py file) ----------
