@@ -440,7 +440,7 @@ class TaxonomicClassification:
             bracken_reports = report_files
             if not bracken_reports:
                 self.log("ERROR", "No Bracken reports found. Cannot generate BIOM tables")
-                return
+                sys.exit(1)
             OUTPUT_DIR_biom = os.path.join(self.out_dir, "08-kraken-biom", f"{self.db_name}")
             os.makedirs(OUTPUT_DIR_biom, exist_ok=True)
             for report in bracken_reports:
