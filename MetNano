@@ -121,8 +121,11 @@ fi
 # Move to working directory
 cd $output_dir
 
+# Capture MetNano code directory
+DIR=$(dirname $(realpath $0))
+
 # Lauch MetNano pipeline
-python3 /project/rclevesq/software/metnano/anthony/MetNano/scripts/run_container_MetNano.py \
+python3 $DIR/scripts/run_container_MetNano.py \
     -n "$nano_dir" \
     -f "$FORCE_SET" \
     -L "$list" \

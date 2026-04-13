@@ -1,7 +1,9 @@
 import os
+import sys
 
 ## Utilities folder localisation
-utilities_f='/mnt/ibis/rclevesq/software/metnano/current/src/utilities/'
+dir = sys.argv[0].replace("/run_container_MetNano.py", "")
+utilities_f = f"{dir}/utilities/"
 
 ## Unzip and demultiplex
 unzip_barcode_script= os.path.join(utilities_f,  "unzip_barcoded_reads.sh")
