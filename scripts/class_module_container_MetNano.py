@@ -12,10 +12,10 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from parameter_MetNano import *
 
-############### Class for preprocessing of raw ONT reads ###############
+############### Class for preprocessing raw ONT reads ###############
 class Preprocessing:
     """
-    Python class allowing the computation of sequencing statistics quality
+    Python class allowing the computation of sequencing statistics, quality
     control, and filtering from from raw reads, followed by read
     segmentation to homogenous length. Optionnaly, filtered reads can also
     be mapped onto a reference genome to deplete host reads.
@@ -90,7 +90,7 @@ class Preprocessing:
 
     def assembly_stat(self):
         # ---------- Generate assembly stats files for all samples in ONT folder ----------
-        print(f"# Sequencing statistics with assembly-stats", flush=True)
+        print(f"# Compute sequencing statistics with assembly-stats", flush=True)
         out_dir = os.path.join(self.outputunzfile,"01-assembly-stats" )
         out_file = os.path.join(out_dir ,"assembly-stats.tsv")
         os.makedirs(out_dir, exist_ok=True)
@@ -274,7 +274,7 @@ class Preprocessing:
 
     def run_all(self):
         if self.unzip == "True":
-            self.run_unzip() # runs if unzip = True
+            self.run_unzip()
         else:
             self.create_ln_file()
         self.run_rename()
@@ -286,7 +286,7 @@ class Preprocessing:
 class TaxonomicClassification:
         """
         Python class allowing the assignment of taxonomic classification to reads with
-        Kraken2 using a temporary DB copy in RAM (/dev/shm) for speed, the estimatation
+        Kraken2 using a temporary DB copy in RAM (/dev/shm) for speed, the estimation
         of taxa abundance with Bracken and the conversion of Kraken2-style reports into
         BIOM tables with kraken-biom.
         """
