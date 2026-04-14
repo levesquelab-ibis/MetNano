@@ -26,7 +26,7 @@ class Preprocessing:
         self.qualityscore=qualityscore
         self.minlength=minlength
         self.thread = thread
-        self.readmap = readmap
+        self.mapping = readmap
         self.metadata = metadata
         self.unzip=unzip
         self.current_dir = os.path.abspath(".")
@@ -167,19 +167,19 @@ class Preprocessing:
     def run_chopper_parallel(self, fastqs):
         # ---------- Run chopper with selected parameters (see parameter_MetNano.py file) ----------
         # Output directory
-        self.trimmed_dir = os.path.join(self.outputunzfile, "04-chopper")
-        os.makedirs(self.trimmed_dir, exist_ok=True)
+        self.chopper_dir = os.path.join(self.outputunzfile, "04-chopper")
+        os.makedirs(self.chopper_dir, exist_ok=True)
 
         def run_chopper_single(fq):
             base_name = os.path.basename(fq)
             if fq.endswith(".fastq.gz"):
                 out_fq = os.path.join(
-                    self.trimmed_dir,
+                    self.chopper_dir,
                     base_name.replace(".fastq.gz", "_trimmed.fastq")
                 )
             else:
                 out_fq = os.path.join(
-                    self.trimmed_dir,
+                    self.chopper_dir,
                     base_name.replace(".fastq", "_trimmed.fastq")
                 )
 
@@ -210,12 +210,12 @@ class Preprocessing:
             base_name = os.path.basename(fq)
             if fq.endswith(".fastq.gz"):
                 out_fq = os.path.join(
-                    self.trimmed_dir,
+                    self.chopper_dir,
                     base_name.replace(".fastq.gz", "_trimmed.fastq")
                 )
             else:
                 out_fq = os.path.join(
-                    self.trimmed_dir,
+                    self.chopper_dir,
                     base_name.replace(".fastq", "_trimmed.fastq")
                 )
             unmapped_fq = os.path.join(
@@ -228,7 +228,7 @@ class Preprocessing:
                 self.log("INFO", f"Mapping reads from {base_name}...")
                 cmd_map = (
                     f"minimap2 -a -x {mapping_preset} -t 1 "
-                    f"{self.readmap} {out_fq} "
+                    f"{self.mapping} {out_fq} "
                     f"> {unmapped_fq.replace('_unmapped.fastq', '_alignment.sam')}"
                 )
                 self.log("RUN", f"{cmd_map}")
@@ -273,54 +273,54 @@ class Preprocessing:
     def run_SeqKit_parallel(self, fastqs):
         # ---------- Run  seqkit with selected parameters (see parameter_MetNano.py file) ----------
         # Output directory
-        self.sliding_dir = os.path.join(self.outputunzfile, "05-SeqKit")
-        os.makedirs(self.sliding_dir, exist_ok=True)
+        self.seqkit_dir = os.path.join(self.outputunzfile, "05-SeqKit")
+        os.makedirs(self.seqkit_dir, exist_ok=True)
 
         def run_SeqKit_single(fq):
             base_name = os.path.basename(fq)
-            if self.readmap in [None, "None"]:
+            if self.mapping in [None, "None"]:
                 if fq.endswith(".fastq.gz"):
-                    out_fq = os.path.join(
-                        self.trimmed_dir,
+                    input_fq = os.path.join(
+                        self.chopper_dir,
                         base_name.replace(".fastq.gz", "_trimmed.fastq")
                     )
                 else:
-                    out_fq = os.path.join(
-                        self.trimmed_dir,
+                    input_fq = os.path.join(
+                        self.chopper_dir,
                         base_name.replace(".fastq", "_trimmed.fastq")
                     )
             else:
                 if fq.endswith(".fastq.gz"):
-                    out_fq = os.path.join(
+                    input_fq = os.path.join(
                         self.minimap2_dir,
                         base_name.replace(".fastq.gz", "_unmapped.fastq")
                     )
                 else:
-                    out_fq = os.path.join(
+                    input_fq = os.path.join(
                         self.minimap2_dir,
                         base_name.replace(".fastq", "_unmapped.fastq")
                     )
-            out_fq_sliding = os.path.join(
-                self.sliding_dir,
+            output_fq = os.path.join(
+                self.seqkit_dir,
                 base_name.replace(".fastq.gz", "")
                          .replace(".fastq", "")
-                         + "_sliding.fastq"
+                         + "_segmented.fastq"
             )
-            if os.path.exists(out_fq_sliding):
-                self.log("INFO", f"Segmented file already exists for {fq_for_sliding}")
+            if os.path.exists(output_fq):
+                self.log("INFO", f"Segmented file already exists for {input_fq}")
                 return
             else:
-                self.log("INFO", f"Segmenting reads for {fq_for_sliding}...")
+                self.log("INFO", f"Segmenting reads for {input_fq}...")
                 cmd = (
                     f"seqkit sliding "
                     f"-W {self.minlength} "
                     f"-s {self.minlength} "
-                    f"{fq_for_sliding} "
-                    f"> {out_fq_sliding}"
+                    f"{input_fq} "
+                    f"> {output_fq}"
                 )
                 self.log("RUN", f"{cmd}")
                 subprocess.run(cmd, shell=True, check=True)
-                self.log("INFO", f"Segmenting completed for {fq_for_sliding}")
+                self.log("INFO", f"Segmenting completed for {input_fq}")
 
         # ---------- Run in parallel ----------
         self.parallel_execution(run_SeqKit_single, fastqs)
@@ -360,7 +360,7 @@ class Preprocessing:
         self.run_chopper_parallel(fastqs)
 
         # If a reference genome is specified
-        if hasattr(self, 'readmap') and self.readmap not in [None, "None"]:
+        if hasattr(self, 'mapping') and self.mapping not in [None, "None"]:
             # Run minimap2
             print(f"\n# Mapping reads to reference genome with minimap2", flush = True)
             self.run_minimap2_parallel(fastqs)
