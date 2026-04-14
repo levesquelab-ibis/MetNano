@@ -37,9 +37,19 @@ class Preprocessing:
     def log(self, type, message):
             print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [{type}] {message}", flush=True)
 
+    def parallel_execution(self, function, fastqs):
+        # ---------- Parallel execution ----------
+        with ThreadPoolExecutor(max_workers=self.thread) as exe:
+                      future_map = {
+                           exe.submit(function, fq): fq
+                           for fq in fastqs
+                          }
+                      for future in as_completed(future_map):
+                           fq = future_map[future]
+                           future.result()  # crash fast, loud, and clear
+
     def run_unzip(self):
         # ---------- Unzip and demultiplex barcoded samples ----------
-        print("# Unzip FASTQ files", flush = True)
         if not os.path.exists(self.outputunzfilefastq):
             self.log("INFO", "Folder unzip {self.outputunzfilefastq} is missing, running {unzip_barcode_script}")
             self.log("INFO", "Running unzip_barcode_script ...")
@@ -58,7 +68,6 @@ class Preprocessing:
 
     def create_ln_file(self) :
         # ---------- Skip demultiplexing ----------
-        print("# Demultiplexing", flush=True)
         if not os.path.exists(self.outputunzfilefastq):
             self.log("INFO", "Demultiplexing step not set with --unzip parameter.")
             self.log("INFO", "Direct copy link from original file to working directory")
@@ -74,8 +83,8 @@ class Preprocessing:
         # ---------- Rename file with metadata provided ----------
         barcode_fastqs = glob.glob(os.path.join(self.outputunzfilefastq, "*barcode*.fastq*"))
         fastqs = glob.glob(os.path.join(self.outputunzfilefastq, "*.fastq"))
-        print(f"# Renaming barcodes", flush=True)
         if barcode_fastqs:
+            self.log("INFO", "Renaming samples with metadata...")
             rename_cmd = f"{rename_barcodes_w_sheet} {self.metadata}"
             self.log("RUN", f"{rename_cmd}")
             subprocess.run(rename_cmd, shell=True, check=True, cwd=self.outputunzfilefastq)
@@ -90,84 +99,79 @@ class Preprocessing:
 
     def assembly_stat(self):
         # ---------- Generate assembly stats files for all samples in ONT folder ----------
-        print(f"# Compute sequencing statistics with assembly-stats", flush=True)
         out_dir = os.path.join(self.outputunzfile,"01-assembly-stats" )
         out_file = os.path.join(out_dir ,"assembly-stats.tsv")
         os.makedirs(out_dir, exist_ok=True)
         if os.path.isfile(out_file) and os.path.getsize(out_file) > 0:
-            self.log("INFO", "File assembly-stats.tsv already exists\n")
+            self.log("INFO", "File assembly-stats.tsv already exists")
             return
         self.log("INFO", f"Computing sequencing reads statistics...")
         cmd = f"assembly-stats -t {self.outputunzfilefastq}/*.fastq > {out_file}  "
         self.log("RUN", f" {cmd} in {self.outputunzfile}")
         subprocess.run(cmd, shell=True, check=True, cwd=self.outputunzfile)
-        self.log("INFO", f"Sequencing statistics written to {out_file}\n")
+        self.log("INFO", f"Sequencing statistics written to {out_file}")
 
-    def run_QC_parallel(self):
-        # ---------- Run individual NanoPlot and nanoQC for each samples ----------
-        fastqs = glob.glob(os.path.join(self.outputunzfilefastq, "*.fastq"))
-        self.log("INFO", f"FASTQ file found: {len(fastqs)}\n")
-
+    def run_NanoPlot_parallel(self, fastqs):
+        # ---------- Run individual NanoPlot for each sample ----------
         if not fastqs:
-            self.log("WARN", "No FASTQ files found, skipping NanoPlot/nanoQC\n")
+            self.log("WARN", "No FASTQ files found, skipping NanoPlot\n")
             return
 
-        def run_QC_single(fq):
+        def run_NanoPlot_single(fq):
             sample = os.path.basename(fq).replace(".fastq", "")
             nanoplot_out = os.path.join(self.outputunzfile,"02-NanoPlot" ,f"NanoPlot_{sample}")
-            nanoQC_out = os.path.join(self.outputunzfile,"03-nanoQC" ,f"nanoQC_{sample}")
 
             # ---------- NanoPlot ----------
-            print("# Quality control with NanoPlot", flush = True)
             if os.path.isdir(nanoplot_out):
-                self.log("INFO", f"NanoPlot already exists for sample {sample}\n")
+                self.log("INFO", f"NanoPlot already exists for sample {sample}")
             else:
+                self.log("INFO", f"Analyzing sample {sample}...")
                 nanoplot_cmd = (
                     f"NanoPlot --fastq {fq} "
                     f"--outdir {nanoplot_out} "
                     f"--prefix {sample}_ "
                     f"-t 1"
                 )
-                self.log("INFO", f"Analyzing sample {sample}...")
                 self.log("RUN", f"{nanoplot_cmd}")
                 subprocess.run(nanoplot_cmd, shell=True, check=True)
-                self.log("INFO", f"NanoPlot completed for sample {sample}\n")
+                self.log("INFO", f"NanoPlot completed for sample {sample}")
 
-            # ---------- nanoQC ----------
-            print("# Quality control with nanoQC", flush = True)
+        # ---------- Run in parallel ----------
+        self.parallel_execution(run_NanoPlot_single, fastqs)
+
+    def run_nanoQC_parallel(self, fastqs):
+        # ---------- Run individual nanoQC for each sample ----------
+        fastqs = glob.glob(os.path.join(self.outputunzfilefastq, "*.fastq"))
+        if not fastqs:
+            self.log("WARN", "No FASTQ files found, skipping nanoQC\n")
+            return
+
+        def run_nanoQC_single(fq):
+            sample = os.path.basename(fq).replace(".fastq", "")
+            nanoQC_out = os.path.join(self.outputunzfile,"03-nanoQC" ,f"nanoQC_{sample}")
+
             if os.path.isdir(nanoQC_out):
-                self.log("INFO", f"nanoQC already exists for sample {sample}\n")
+                self.log("INFO", f"nanoQC already exists for sample {sample}")
             else:
+                self.log("INFO", f"Analyzing sample {sample}...")
                 nanoQC_cmd = (
                     f"nanoQC {fq} --outdir {nanoQC_out}"
                 )
-                self.log("INFO", f"Analyzing sample {sample}...")
                 self.log("RUN", f"{nanoQC_cmd}")
                 subprocess.run(nanoQC_cmd, shell=True, check=True)
-                self.log("INFO", f"nanoQC completed for sample {sample}\n")
+                self.log("INFO", f"nanoQC completed for sample {sample}")
 
-        # ---------- Parallel execution ----------
-        with ThreadPoolExecutor(max_workers=self.thread) as exe:
-            futures = [exe.submit(run_QC_single, fq) for fq in fastqs]
-            for f in as_completed(futures):
-                f.result()  # surface exceptions
+        # ---------- Run in parallel ----------
+        self.parallel_execution(run_nanoQC_single, fastqs)
 
-    def run_chopper_parallel(self):
-        # ---------- Run chopper and seqkit  with selected parameters (see parameter_MetNano.py file) ----------
-        print("# Read filtering and trimming with chopper", flush=True)
-        filelist_fastQ = glob.glob(os.path.join(self.outputunzfilefastq, "*.fastq*"))
-
-        # Output directories
+    def run_chopper_parallel(self, fastqs):
+        # ---------- Run chopper with selected parameters (see parameter_MetNano.py file) ----------
+        # Output directory
         self.trimmed_dir = os.path.join(self.outputunzfile, "04-chopper")
-        self.minimap2_dir = os.path.join(self.outputunzfile, "04b-minimap2")
-        self.sliding_dir = os.path.join(self.outputunzfile, "05-SeqKit")
         os.makedirs(self.trimmed_dir, exist_ok=True)
-        os.makedirs(self.sliding_dir, exist_ok=True)
 
-        def process_fastq(fq):
+        def run_chopper_single(fq):
             base_name = os.path.basename(fq)
-
-            # Trimmed output
             if fq.endswith(".fastq.gz"):
                 out_fq = os.path.join(
                     self.trimmed_dir,
@@ -179,15 +183,6 @@ class Preprocessing:
                     base_name.replace(".fastq", "_trimmed.fastq")
                 )
 
-            # Segmented output
-            out_fq_sliding = os.path.join(
-                self.sliding_dir,
-                base_name.replace(".fastq.gz", "")
-                         .replace(".fastq", "")
-                         + "_sliding.fastq"
-            )
-
-            # ---- STEP 1: chopper ----
             if not os.path.exists(out_fq):
                 self.log("INFO", f"Trimming file {base_name}...")
                 cmd = (
@@ -198,57 +193,121 @@ class Preprocessing:
                 )
                 self.log("RUN", f"{cmd}")
                 subprocess.run(cmd, shell=True, check=True)
-                self.log("INFO", f"Trimming completed for {base_name}\n")
+                self.log("INFO", f"Trimming completed for {base_name}")
             else:
-                self.log("INFO", f"Trimmed file already exists for {base_name}\n")
+                self.log("INFO", f"Trimmed file already exists for {base_name}")
 
-            # ----- STEP 1b: optional minimap2 + samtools if readmap parameter is provided -----
-            if hasattr(self, 'readmap') and self.readmap not in [None, "None"]:
-                unmapped_fq = os.path.join(
-                    self.minimap2_dir,
-                    base_name.replace(".fastq.gz", "")
-                             .replace(".fastq", "")
-                             + "_unmapped.fastq"
+        # ---------- Run in parallel ----------
+        self.parallel_execution(run_chopper_single, fastqs)
+
+    def run_minimap2_parallel(self, fastqs):
+        # ---------- Run minimap2 with selected parameters (see parameter_MetNano.py file) ----------
+        # Output directory
+        self.minimap2_dir = os.path.join(self.outputunzfile, "04b-minimap2")
+        os.makedirs(self.minimap2_dir, exist_ok=True)
+
+        def run_minimap2_single(fq):
+            base_name = os.path.basename(fq)
+            if fq.endswith(".fastq.gz"):
+                out_fq = os.path.join(
+                    self.trimmed_dir,
+                    base_name.replace(".fastq.gz", "_trimmed.fastq")
                 )
-
-                if not os.path.exists(unmapped_fq):
-                    # ----- Run minimap2 alignment -----
-                    print(f"# Mapping reads to reference genome with minimap2", flush = True)
-                    os.makedirs(self.minimap2_dir, exist_ok=True)
-                    cmd_map = (
-                        f"minimap2 -a -x {mapping_preset} -t 1 "
-                        f"{self.readmap} {out_fq} "
-                        f"> {unmapped_fq.replace('_unmapped.fastq', '_alignment.sam')}"
-                    )
-                    self.log("RUN", f"{cmd_map}")
-                    subprocess.run(cmd_map, shell=True, check=True)
-                    self.log("INFO", f"Mapping completed for {out_fq}\n")
-
-                    # ----- Extract unmapped reads -----
-                    print(f"# Extraction of unmapped reads with samtools", flush = True)
-                    cmd_samtools = (
-                        f"samtools view -bf 4 "
-                        f"{unmapped_fq.replace('_unmapped.fastq', '_alignment.sam')} "
-                        f"> {unmapped_fq.replace('_unmapped.fastq', '_unmapped.bam')} && "
-                        f"samtools fastq "
-                        f"{unmapped_fq.replace('_unmapped.fastq', '_unmapped.bam')} "
-                        f"> {unmapped_fq}"
-                    )
-                    self.log("RUN", f"{cmd_samtools}")
-                    subprocess.run(cmd_samtools, shell=True, check=True)
-                    self.log("INFO", f"Reads extracted from {unmapped_fq.replace('_unmapped.fastq', '_unmapped.bam')}")
-                else:
-                    self.log("INFO", f"Readmap output already exists: {unmapped_fq}\n")
-
-                # Use unmapped reads for segmentation step
-                fq_for_sliding = unmapped_fq
             else:
-                fq_for_sliding = out_fq
+                out_fq = os.path.join(
+                    self.trimmed_dir,
+                    base_name.replace(".fastq", "_trimmed.fastq")
+                )
+            unmapped_fq = os.path.join(
+                self.minimap2_dir,
+                base_name.replace(".fastq.gz", "")
+                         .replace(".fastq", "")
+                         + "_unmapped.fastq"
+            )
+            if not os.path.exists(unmapped_fq):
+                self.log("INFO", f"Mapping reads from {base_name}...")
+                cmd_map = (
+                    f"minimap2 -a -x {mapping_preset} -t 1 "
+                    f"{self.readmap} {out_fq} "
+                    f"> {unmapped_fq.replace('_unmapped.fastq', '_alignment.sam')}"
+                )
+                self.log("RUN", f"{cmd_map}")
+                subprocess.run(cmd_map, shell=True, check=True)
+                self.log("INFO", f"Mapping completed for {out_fq}\n")
 
-            # ----- STEP 2: SeqKit -----
-            print("# Read segmentation with SeqKit", flush=True)
+        # ---------- Run in parallel ----------
+        self.parallel_execution(run_minimap2_single, fastqs)
+
+    def run_samtools_parallel(self, fastqs):
+        # ---------- Extract unmapped reads with samtools ----------
+        # Output directory
+        self.minimap2_dir = os.path.join(self.outputunzfile, "04b-minimap2")
+
+        def run_samtools_single(fq):
+            base_name = os.path.basename(fq)
+            unmapped_fq = os.path.join(
+                self.minimap2_dir,
+                base_name.replace(".fastq.gz", "")
+                         .replace(".fastq", "")
+                         + "_unmapped.fastq"
+            )
+            if not os.path.exists(unmapped_fq):
+                self.log("INFO", f"Extracting reads from {os.path.basename(unmapped_fq)}...")
+                cmd_samtools = (
+                    f"samtools view -bf 4 "
+                    f"{unmapped_fq.replace('_unmapped.fastq', '_alignment.sam')} "
+                    f"> {unmapped_fq.replace('_unmapped.fastq', '_unmapped.bam')} && "
+                    f"samtools fastq "
+                    f"{unmapped_fq.replace('_unmapped.fastq', '_unmapped.bam')} "
+                    f"> {unmapped_fq}"
+                )
+                self.log("RUN", f"{cmd_samtools}")
+                subprocess.run(cmd_samtools, shell=True, check=True)
+                self.log("INFO", f"Reads extracted from {unmapped_fq.replace('_unmapped.fastq', '_unmapped.bam')}")
+            else:
+                self.log("INFO", f"samtools output already exists: {unmapped_fq}")
+
+        # ---------- Run in parallel ----------
+        self.parallel_execution(run_samtools_single, fastqs)
+
+    def run_SeqKit_parallel(self, fastqs):
+        # ---------- Run  seqkit with selected parameters (see parameter_MetNano.py file) ----------
+        # Output directory
+        self.sliding_dir = os.path.join(self.outputunzfile, "05-SeqKit")
+        os.makedirs(self.sliding_dir, exist_ok=True)
+
+        def run_SeqKit_single(fq):
+            base_name = os.path.basename(fq)
+            if self.readmap in [None, "None"]:
+                if fq.endswith(".fastq.gz"):
+                    out_fq = os.path.join(
+                        self.trimmed_dir,
+                        base_name.replace(".fastq.gz", "_trimmed.fastq")
+                    )
+                else:
+                    out_fq = os.path.join(
+                        self.trimmed_dir,
+                        base_name.replace(".fastq", "_trimmed.fastq")
+                    )
+            else:
+                if fq.endswith(".fastq.gz"):
+                    out_fq = os.path.join(
+                        self.minimap2_dir,
+                        base_name.replace(".fastq.gz", "_unmapped.fastq")
+                    )
+                else:
+                    out_fq = os.path.join(
+                        self.minimap2_dir,
+                        base_name.replace(".fastq", "_unmapped.fastq")
+                    )
+            out_fq_sliding = os.path.join(
+                self.sliding_dir,
+                base_name.replace(".fastq.gz", "")
+                         .replace(".fastq", "")
+                         + "_sliding.fastq"
+            )
             if os.path.exists(out_fq_sliding):
-                self.log("INFO", f"Segmented file already exists for {fq_for_sliding}\n")
+                self.log("INFO", f"Segmented file already exists for {fq_for_sliding}")
                 return
             else:
                 self.log("INFO", f"Segmenting reads for {fq_for_sliding}...")
@@ -261,26 +320,58 @@ class Preprocessing:
                 )
                 self.log("RUN", f"{cmd}")
                 subprocess.run(cmd, shell=True, check=True)
-                self.log("INFO", f"Segmenting completed for {fq_for_sliding}\n")
+                self.log("INFO", f"Segmenting completed for {fq_for_sliding}")
 
-        with ThreadPoolExecutor(max_workers=self.thread) as exe:
-                      future_map = {
-                           exe.submit(process_fastq, fq): fq
-                           for fq in filelist_fastQ
-                          }
-                      for future in as_completed(future_map):
-                           fq = future_map[future]
-                           future.result()  # crash fast, loud, and clear
+        # ---------- Run in parallel ----------
+        self.parallel_execution(run_SeqKit_single, fastqs)
 
     def run_all(self):
+
+        # Unzip and concatenate FASTQ in raw ONT folder if --unzip True
         if self.unzip == "True":
+            print("# Unzip FASTQ files", flush = True)
             self.run_unzip()
         else:
+            print("# Demultiplexing", flush=True)
             self.create_ln_file()
+
+        # Rename FASTQ files
+        print(f"# Renaming barcodes", flush=True)
         self.run_rename()
+
+        # Get FASTQ file list for task parallelization
+        fastqs = glob.glob(os.path.join(self.outputunzfilefastq, "*.fastq*"))
+        self.log("INFO", f"FASTQ file found: {len(fastqs)}\n")
+
+        # Run assembly-stats
+        print(f"# Compute sequencing statistics with assembly-stats", flush=True)
         self.assembly_stat()
-        self.run_QC_parallel()
-        self.run_chopper_parallel()
+
+        # Run NanoPlot
+        print("\n# Quality control with NanoPlot", flush = True)
+        self.run_NanoPlot_parallel(fastqs)
+
+        # Run nanoQC
+        print("\n# Quality control with nanoQC", flush = True)
+        self.run_nanoQC_parallel(fastqs)
+
+        # Run chopper
+        print("\n# Read filtering and trimming with chopper", flush=True)
+        self.run_chopper_parallel(fastqs)
+
+        # If a reference genome is specified
+        if hasattr(self, 'readmap') and self.readmap not in [None, "None"]:
+            # Run minimap2
+            print(f"\n# Mapping reads to reference genome with minimap2", flush = True)
+            self.run_minimap2_parallel(fastqs)
+
+            # Run samtools
+            print(f"# Extraction of unmapped reads with samtools", flush = True)
+            self.run_samtools_parallel(fastqs)
+
+        # Run SeqKit
+        print("\n# Read segmentation with SeqKit", flush=True)
+        self.run_SeqKit_parallel(fastqs)
 
 ########## Class for read taxonomic classification and abundance estimation ##########
 class TaxonomicClassification:
