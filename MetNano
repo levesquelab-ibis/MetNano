@@ -1,9 +1,5 @@
 #!/bin/bash
 
-#---------
-# MetNano
-#---------
-
 # Usage
 USAGE='
 -----------------------------------------
@@ -125,9 +121,9 @@ DIR=$(dirname $(realpath $0))
 
 # Lauch MetNano pipeline
 python3 $DIR/scripts/run_container_MetNano.py \
-    -n "$nano_dir" \
-    -f "$FORCE_SET" \
-    -L "$list" \
+    -n $nano_dir \
+    -f $FORCE_SET \
+    -L $list \
     -l $minlength \
     -q $qualityscore \
     -c $confidence \

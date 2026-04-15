@@ -1,18 +1,16 @@
-import sys
 import os
+import sys
 import argparse
-from class_module_container_MetNano import *
-from parameter_MetNano import *
 from datetime import datetime
-
-print("# Starting MetNano with the following parameters:", flush=True)
+from parameter_MetNano import *
+from class_module_container_MetNano import *
 
 # Create the parser
 parser = argparse.ArgumentParser(description="Process some parameters.")
 
 # Positional arguments (required)
 parser.add_argument("-n", "--folder_nanopore", help="Path to the nanopore folder.")
-parser.add_argument("-L", "--list_association", help="association file.")
+parser.add_argument("-L", "--association_file", help="association file.")
 parser.add_argument("-d", "--database", help="quality seq.")
 
 # Optional arguments with default values
@@ -28,11 +26,11 @@ args = parser.parse_args()
 
 # Access the arguments
 folder_nanopore = args.folder_nanopore
-list_association = args.list_association
+association_file = args.association_file
 minlength = args.minlength
 qualityscore = args.qualityscore
 force_set = args.force_set
-run_quality = args.list_association
+run_quality = args.association_file
 confidence = args.confidence
 database = args.database
 mapping = args.mapping
@@ -40,43 +38,39 @@ unzip = args.unzip
 
 database_name= os.path.basename(os.path.normpath(database))
 
+print("# Starting MetNano with the following parameters:", flush=True)
+
 # For debugging, you can print all the variables to verify
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] ONT folder: {folder_nanopore}")
-print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] association file: {list_association}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] association file: {association_file}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] minlength: {minlength}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] minqualityscore: {qualityscore}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] read mapping on host genome: {mapping}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] kraken2 confidence score: {confidence}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] kraken2 database: {database}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] unzip: {unzip}")
-print()
 
 # Add the directory containing your scripts to the Python path
-sys.path.append('/mnt/ibis/rclevesq/software/nanobatch_wgs/lspq_validation/src')
+#sys.path.append('/mnt/ibis/rclevesq/software/nanobatch_wgs/lspq_validation/src')
 
-# Demultiplexing and QC
+# Run Demultiplexing and QC pipeline
 preprocessed = Preprocessing(
     folder_nanopore,
     6,
-    list_association,
+    association_file,
     mapping,
     qualityscore,
     minlength,
-    unzip)
+    unzip
+)
 
 preprocessed.run_all()
 
-seqkit_dir = preprocessed.seqkit_dir
-chopper_dir = preprocessed.chopper_dir
-outputunzfile = preprocessed.outputunzfile
-
-kraken_input_dir = os.path.join(outputunzfile)
-
+# Run read taxonomic classification and taxa abundance estimation pipeline
 classified = TaxonomicClassification(
     db_path=database,
     db_name=database_name,
-    fastq_dir=seqkit_dir,
-    out_dir=kraken_input_dir,
+    fastq_dir=preprocessed.seqkit_dir,
     threads=6,
     confidence=confidence,
     minlength=minlength
