@@ -20,7 +20,7 @@ class Preprocessing:
     segmentation to homogenous length. Optionnaly, filtered reads can also
     be mapped onto a reference genome to deplete host reads.
     """
-    def __init__(self, folder_no_sample_id, threads, metadata, readmap, qualityscore=15, minlength=300, unzip = False):
+    def __init__(self, folder_no_sample_id, threads, metadata, readmap, qualityscore, minlength, unzip):
         self.folder_no_sample_id = folder_no_sample_id.rstrip("/")
         self.last_folder = os.path.basename(self.folder_no_sample_id.rstrip("/"))
         self.qualityscore = qualityscore
@@ -379,7 +379,7 @@ class TaxonomicClassification:
         of taxa abundance with Bracken and the conversion of Kraken2-style reports into
         BIOM tables with kraken-biom.
         """
-        def __init__(self, db_path, db_name, fastq_dir, threads, confidence=0.1, minlength=300):
+        def __init__(self, db_path, db_name, fastq_dir, threads, confidence, minlength):
             self.db_path = db_path
             self.db_name = db_name
             self.fastq_dir = fastq_dir
