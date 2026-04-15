@@ -337,8 +337,9 @@ class Preprocessing:
         print()
         self.log("INFO", f"FASTQ file found: {len(fastqs)}\n")
         if not fastqs:
-            self.log("WARN", "No FASTQ files found, skipping NanoPlot\n")
-            return
+            self.log("ERROR", f"No FASTQ files found in {self.outputunzfilefastq}")
+            self.log("ERROR", "Exiting MetNano")
+            sys.exit(1)
 
         # Run assembly-stats
         print(f"# Compute sequencing statistics with assembly-stats", flush=True)
