@@ -233,7 +233,7 @@ class Preprocessing:
                 )
                 self.log("RUN", f"{cmd_map}")
                 subprocess.run(cmd_map, shell=True, check=True)
-                self.log("INFO", f"Mapping completed for {out_fq}\n")
+                self.log("INFO", f"Mapping completed for {out_fq}")
 
         # ---------- Run in parallel ----------
         self.parallel_execution(run_minimap2_single, fastqs)
@@ -381,10 +381,10 @@ class TaxonomicClassification:
         of taxa abundance with Bracken and the conversion of Kraken2-style reports into
         BIOM tables with kraken-biom.
         """
-        def __init__(self, db_path, db_name, fasta_dir, out_dir, threads=6, confidence=0.1, minlength=300):
+        def __init__(self, db_path, db_name, fastq_dir, out_dir, threads=6, confidence=0.1, minlength=300):
             self.db_path = db_path
             self.db_name = db_name
-            self.fasta_dir = fasta_dir
+            self.fastq_dir = fastq_dir
             self.out_dir = out_dir
             self.threads = threads
             self.confidence = confidence
@@ -418,12 +418,12 @@ class TaxonomicClassification:
                    raise RuntimeError(f"Database copy incomplete: missing {f}")
             self.log("INFO", "Database copy completed\n")
 
-        def run_kraken2(self, fasta_file):
+        def run_kraken2(self, fastq_file):
             # --------- Kraken2 command ----------
-            """Run Kraken2 on a single FASTA/FASTQ file"""
+            """Run Kraken2 on a single FASTQ file"""
             print("# Read taxonomic classification with Kraken2", flush = True)
             os.makedirs(self.base_kraken, exist_ok=True)
-            sample_name = os.path.splitext(os.path.basename(fasta_file))[0]
+            sample_name = os.path.splitext(os.path.basename(fastq_file))[0]
             sample_name = re.sub(r"_sliding(_[0-9.]+)?", "", sample_name, flags=re.IGNORECASE)
             prefix = f"{sample_name}_{self.confidence}"
             kraken_output = os.path.join(self.base_kraken, f"{prefix}.all")
@@ -454,7 +454,7 @@ class TaxonomicClassification:
                     f"--report {kraken_report} "
                     f"--confidence {self.confidence} "
                     f"--memory-mapping "
-                    f"{fasta_file}"
+                    f"{fastq_file}"
                 )
 
                 self.log("INFO", f"Running Kraken2 for {prefix}")
@@ -465,11 +465,11 @@ class TaxonomicClassification:
                 if not file_exists_and_not_empty(kraken_output) or not file_exists_and_not_empty(kraken_report):
                     raise RuntimeError(f"[ERROR] Kraken2 run did not produce expected output files for {prefix}")
 
-        def run_bracken(self, fasta_file):
+        def run_bracken(self, fastq_file):
             # ----- Bracken (all taxonomic levels) -----
             print("# Taxon abundance estimation with Bracken", flush = True)
             os.makedirs(self.base_bracken, exist_ok=True)
-            sample_name = os.path.splitext(os.path.basename(fasta_file))[0]
+            sample_name = os.path.splitext(os.path.basename(fastq_file))[0]
             sample_name = re.sub(r"_sliding(_[0-9.]+)?", "", sample_name, flags=re.IGNORECASE)
             prefix = f"{sample_name}_{self.confidence}"
             kraken_output = os.path.join(self.base_kraken, f"{prefix}.all")
@@ -556,12 +556,12 @@ class TaxonomicClassification:
             self.log("INFO", f"BIOM tables generated\n")
 
         def run_all(self, max_workers=1):
-                fasta_files = glob.glob(os.path.join(self.fasta_dir, "*.fastq*"))
-                if not fasta_files:
+                fastq_files = glob.glob(os.path.join(self.fastq_dir, "*.fastq*"))
+                if not fastq_files:
                     self.log("ERROR", "No FASTQ files found.")
                     return
                 files_to_run = []
-                for f in fasta_files:
+                for f in fastq_files:
                     sample_name = os.path.splitext(os.path.basename(f))[0]
                     sample_name = re.sub(r"_sliding(_[0-9.]+)?", "", sample_name, flags=re.IGNORECASE)
                     expected_report = os.path.join(self.base_kraken, f"{sample_name}_{self.confidence}.report")
@@ -587,7 +587,7 @@ class TaxonomicClassification:
                 # Optional DB cleanup here
 
                 # Run Braken
-                for f in fasta_files:
+                for f in fastq_files:
                     try:
                         self.run_bracken(f)
                     except subprocess.CalledProcessError as e:

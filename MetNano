@@ -45,7 +45,6 @@ EXAMPLE:
 
 AUTHORS:
 Guillaume Nguyen, Jeff Gauthier and Anthony Piot (Levesque Lab)
-2026-01-07
 '
 
 # Default values for optional parameters
@@ -68,7 +67,7 @@ while getopts "L:o:n:f:q:l:d:c:m:u:h:" opt; do
         l) minlength="$OPTARG" ;;
         d) database="$OPTARG" ;;
         c) confidence="$OPTARG" ;;
-        m) readmap="$OPTARG" ;;
+        m) mapping="$OPTARG" ;;
         u) unzip="$OPTARG" ;;
         h) usage ;;
         *) usage ;;
@@ -89,8 +88,8 @@ if [ -z "$FORCE" ]; then
         FORCE_SET="$FORCE"
 fi
 
-if [ -z "$readmap" ]; then
-        readmap="None"
+if [ -z "$mapping" ]; then
+        mapping="None"
 fi
 
 # Optional
@@ -133,5 +132,5 @@ python3 $DIR/scripts/run_container_MetNano.py \
     -q $qualityscore \
     -c $confidence \
     -d $database \
-    -m $readmap \
+    -m $mapping \
     -u $unzip

@@ -19,7 +19,7 @@ parser.add_argument("-d", "--database", help="quality seq.")
 parser.add_argument("-l", "--minlength", help="minlength seq.")
 parser.add_argument("-q", "--qualityscore", help="quality seq.")
 parser.add_argument("-c", "--confidence", help="kraken2 confidence score.")
-parser.add_argument("-m", "--readmap", help="mapping to ref.")
+parser.add_argument("-m", "--mapping", help="mapping to ref.")
 parser.add_argument("-f", "--force_set", help="Force set.")
 parser.add_argument("-u", "--unzip", help="unzip fastq.")
 
@@ -35,7 +35,7 @@ force_set = args.force_set
 run_quality = args.list_association
 confidence = args.confidence
 database = args.database
-readmap = args.readmap
+mapping = args.mapping
 unzip = args.unzip
 
 database_name= os.path.basename(os.path.normpath(database))
@@ -45,7 +45,7 @@ print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] ONT folde
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] association file: {list_association}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] minlength: {minlength}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] minqualityscore: {qualityscore}")
-print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] read mapping on host genome: {readmap}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] read mapping on host genome: {mapping}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] kraken2 confidence score: {confidence}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] kraken2 database: {database}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] unzip: {unzip}")
@@ -59,15 +59,15 @@ preprocessed = Preprocessing(
     folder_nanopore,
     6,
     list_association,
-    readmap,
+    mapping,
     qualityscore,
     minlength,
     unzip)
 
 preprocessed.run_all()
 
-sliding_folder = preprocessed.sliding_dir
-trimmed_folder = preprocessed.trimmed_dir
+seqkit_dir = preprocessed.seqkit_dir
+chopper_dir = preprocessed.chopper_dir
 outputunzfile = preprocessed.outputunzfile
 
 kraken_input_dir = os.path.join(outputunzfile)
@@ -75,7 +75,7 @@ kraken_input_dir = os.path.join(outputunzfile)
 classified = TaxonomicClassification(
     db_path=database,
     db_name=database_name,
-    fasta_dir=sliding_folder,
+    fastq_dir=seqkit_dir,
     out_dir=kraken_input_dir,
     threads=6,
     confidence=confidence,
