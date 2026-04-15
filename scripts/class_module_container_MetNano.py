@@ -1,16 +1,16 @@
 import os
-import sys
-import subprocess
-import shutil
-import glob
-import pandas as pd
-import tempfile
-import math
 import re
+import sys
+import glob
+import math
+import shutil
+import tempfile
+import subprocess
 import pandas as pd
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from parameter_MetNano import *
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 
 ############### Class for preprocessing raw ONT reads ###############
 class Preprocessing:
@@ -319,7 +319,6 @@ class Preprocessing:
         self.parallel_execution(run_SeqKit_single, fastqs)
 
     def run_all(self):
-
         # Unzip and concatenate FASTQ in raw ONT folder if --unzip True
         if self.unzip == "True":
             print("\n# Unzip FASTQ files", flush = True)
@@ -423,9 +422,6 @@ class TaxonomicClassification:
             kraken_output = os.path.join(self.kraken2_dir, f"{prefix}.all")
             kraken_report = os.path.join(self.kraken2_dir, f"{prefix}.report")
 
-            #def file_exists_and_not_empty(path):
-                #return os.path.exists(path) and os.path.getsize(path) > 0
-
             # Check that required files exist
             required_files = ["hash.k2d", "opts.k2d", "taxo.k2d"]
             missing_files = [f for f in required_files if not os.path.exists(os.path.join(self.temp_db_path, f))]
@@ -448,12 +444,6 @@ class TaxonomicClassification:
             self.log("INFO", f"Running Kraken2 for {prefix}")
             subprocess.run(kraken_cmd, shell=True, check=True)
             self.log("END", f"Kraken2 ended\n")
-
-            # Post-run check
-            #if not file_exists_and_not_empty(kraken_output) or not file_exists_and_not_empty(kraken_report):
-            #    self.log("ERROR", f"Kraken2 run did not produce expected output files for {prefix}")
-            #    self.log("END", "Exiting MetNano")
-            #    sys.exit(1)
 
         def run_bracken(self, fastq_file):
             # ----- Bracken (all taxonomic levels) -----

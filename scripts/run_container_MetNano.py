@@ -53,9 +53,6 @@ print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Kraken2 d
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Unzip FASTQs: {unzip}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Number of threads: {threads}")
 
-# Add the directory containing your scripts to the Python path
-#sys.path.append('/mnt/ibis/rclevesq/software/nanobatch_wgs/lspq_validation/src')
-
 # Run Demultiplexing and QC pipeline
 preprocessed = Preprocessing(
     folder_nanopore,
