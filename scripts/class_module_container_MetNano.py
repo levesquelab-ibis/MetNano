@@ -101,11 +101,13 @@ class Preprocessing:
         out_dir = os.path.join(self.outputunzfile,"01-assembly-stats" )
         out_file = os.path.join(out_dir ,"assembly-stats.tsv")
         os.makedirs(out_dir, exist_ok=True)
-        if not os.path.isfile(out_file) and not os.path.getsize(out_file) > 0:
+        if not os.path.isfile(out_file) or not os.path.getsize(out_file) > 0:
             self.log("INFO", f"Computing sequencing reads statistics...")
             cmd = f"assembly-stats -t {self.outputunzfilefastq}/*.fastq > {out_file}  "
             self.log("RUN", f" {cmd} in {self.outputunzfile}")
             subprocess.run(cmd, shell=True, check=True, cwd=self.outputunzfile)
+            rename_cmd = f"sed -i 's|{self.outputunzfilefastq}/||' {out_file}"
+            subprocess.run(rename_cmd, shell=True, check=True, cwd=self.outputunzfile)
             self.log("INFO", f"Sequencing statistics written to {out_file}")
         else:
             self.log("INFO", "File assembly-stats.tsv already exists")
