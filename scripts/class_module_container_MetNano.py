@@ -338,7 +338,7 @@ class Preprocessing:
         self.log("INFO", f"FASTQ file found: {len(fastqs)}\n")
         if not fastqs:
             self.log("ERROR", f"No FASTQ files found in {self.outputunzfilefastq}")
-            self.log("ERROR", "Exiting MetNano")
+            self.log("END", "Exiting MetNano")
             sys.exit(1)
 
         # Run assembly-stats
@@ -409,7 +409,9 @@ class TaxonomicClassification:
             )
             for f in required_files:
                if not os.path.exists(os.path.join(self.temp_db_path, f)):
-                   raise RuntimeError(f"Database copy incomplete: missing {f}")
+                   self.log("ERROR", f"Database copy incomplete: missing {f}")
+                   self.log("END", "Exiting MetNano")
+                   sys.exit(1)
             self.log("INFO", "Database copy completed\n")
 
         def run_kraken2(self, fastq_file):
@@ -428,7 +430,9 @@ class TaxonomicClassification:
             required_files = ["hash.k2d", "opts.k2d", "taxo.k2d"]
             missing_files = [f for f in required_files if not os.path.exists(os.path.join(self.temp_db_path, f))]
             if missing_files:
-                raise RuntimeError(f"[ERROR] Missing required DB files in RAM: {missing_files}")
+                self.log("ERROR", f"Missing required DB files in RAM: {missing_files}")
+                self.log("END", "Exiting MetNano")
+                sys.exit(1)
 
             # ----- Kraken2 -----
             kraken_cmd = (
@@ -447,7 +451,9 @@ class TaxonomicClassification:
 
             # Post-run check
             if not file_exists_and_not_empty(kraken_output) or not file_exists_and_not_empty(kraken_report):
-                raise RuntimeError(f"[ERROR] Kraken2 run did not produce expected output files for {prefix}")
+                self.log("ERROR", f"Kraken2 run did not produce expected output files for {prefix}")
+                self.log("END", "Exiting MetNano")
+                sys.exit(1)
 
         def run_bracken(self, fastq_file):
             # ----- Bracken (all taxonomic levels) -----
@@ -512,6 +518,7 @@ class TaxonomicClassification:
             bracken_reports = report_files
             if not bracken_reports:
                 self.log("ERROR", "No Bracken reports found. Cannot generate BIOM tables")
+                self.log("END", "Exiting MetNano")
                 sys.exit(1)
             OUTPUT_DIR_biom = os.path.join(self.out_dir, "08-kraken-biom", f"{self.db_name}")
             os.makedirs(OUTPUT_DIR_biom, exist_ok=True)
@@ -540,6 +547,8 @@ class TaxonomicClassification:
                 fastq_files = glob.glob(os.path.join(self.fastq_dir, "*.fastq*"))
                 if not fastq_files:
                     self.log("ERROR", "No FASTQ files found.")
+                    self.log("END", "Exiting MetNano")
+                    sys.exit(1)
                     return
                 files_to_run = []
                 for f in fastq_files:
@@ -562,6 +571,7 @@ class TaxonomicClassification:
                         except subprocess.CalledProcessError as e:
                             self.log("ERROR", f"ERROR processing {f}")
                             self.log("ERROR", f"{e}")
+                            self.log("END", "Exiting MetNano")
                             sys.exit(1)
                 else:
                     self.log("INFO", "Kraken2 output files already exist")
@@ -577,6 +587,7 @@ class TaxonomicClassification:
                     except subprocess.CalledProcessError as e:
                         self.log("ERROR", f"ERROR processing {f}")
                         self.log("ERROR", f"{e}")
+                        self.log("END", "Exiting MetNano")
                         sys.exit(1)
 
                 # Run kraken-biom
@@ -586,6 +597,7 @@ class TaxonomicClassification:
                 except subprocess.CalledProcessError as e:
                     self.log("ERROR", f"ERROR running kraken-biom")
                     self.log("ERROR", f"{e}")
+                    self.log("END", "Exiting MetNano")
                     sys.exit(1)
 
                 self.log("END", "MetNano is now complete. Bye!")
