@@ -49,7 +49,7 @@ class Preprocessing:
 
     def run_unzip(self):
         # ---------- Unzip and demultiplex barcoded samples ----------
-        if not os.path.exists(self.outputunzfilefastq):
+        if not os.path.exists(self.outputunzfilefastq) and not os.listdir(self.outputunzfilefastq):
             self.log("INFO", "Folder unzip {self.outputunzfilefastq} is missing, running {unzip_barcode_script}")
             self.log("INFO", "Running unzip_barcode_script ...")
             unz_cmd = f"{unzip_barcode_script} {self.folder_no_sample_id} {self.thread}"
@@ -67,7 +67,7 @@ class Preprocessing:
 
     def create_ln_file(self) :
         # ---------- Skip demultiplexing ----------
-        if not os.path.exists(self.outputunzfilefastq):
+        if not os.path.exists(self.outputunzfilefastq) or not os.listdir(self.outputunzfilefastq):
             self.log("INFO", "Demultiplexing step not set with --unzip parameter.")
             self.log("INFO", "Direct copy link from original file to working directory")
             os.makedirs(self.outputunzfilefastq, exist_ok=True)
@@ -101,7 +101,7 @@ class Preprocessing:
         out_dir = os.path.join(self.outputunzfile,"01-assembly-stats" )
         out_file = os.path.join(out_dir ,"assembly-stats.tsv")
         os.makedirs(out_dir, exist_ok=True)
-        if not os.path.isfile(out_file) or not os.path.getsize(out_file) > 0:
+        if not os.path.isfile(out_file) or os.path.getsize(out_file) == 0:
             self.log("INFO", f"Computing sequencing reads statistics...")
             cmd = f"assembly-stats -t {self.outputunzfilefastq}/*.fastq > {out_file}  "
             self.log("RUN", f" {cmd} in {self.outputunzfile}")
@@ -120,7 +120,8 @@ class Preprocessing:
         def run_NanoPlot_single(fq):
             sample = os.path.basename(fq).replace(".fastq", "")
             nanoplot_out = os.path.join(self.nanoplot_dir, f"NanoPlot_{sample}")
-            if not os.path.isdir(nanoplot_out):
+            nanoplot_html = os.path.join(nanoplot_out, f"{sample}_NanoPlot-report.html")
+            if not os.path.isfile(nanoplot_html) or os.path.getsize(nanoplot_html) == 0:
                 self.log("INFO", f"Analyzing sample {sample}...")
                 nanoplot_cmd = (
                     f"NanoPlot --fastq {fq} "
@@ -145,7 +146,8 @@ class Preprocessing:
         def run_nanoQC_single(fq):
             sample = os.path.basename(fq).replace(".fastq", "")
             nanoQC_out = os.path.join(self.nanoQC_dir, f"nanoQC_{sample}")
-            if not os.path.isdir(nanoQC_out):
+            nanoQC_html = os.path.join(nanoQC_out, "nanoQC.html")
+            if not os.path.isfile(nanoQC_html) or os.path.getsize(nanoQC_html) == 0:
                 self.log("INFO", f"Analyzing sample {sample}...")
                 nanoQC_cmd = (
                     f"nanoQC {fq} --outdir {nanoQC_out}"
@@ -176,8 +178,7 @@ class Preprocessing:
                     self.chopper_dir,
                     base_name.replace(".fastq", "_trimmed.fastq")
                 )
-
-            if not os.path.exists(out_fq):
+            if not os.path.isfile(out_fq) or os.path.getsize(out_fq) == 0:
                 self.log("INFO", f"Trimming file {base_name}...")
                 cmd = (
                     f"cat {fq} | "
@@ -201,28 +202,22 @@ class Preprocessing:
 
         def run_minimap2_single(fq):
             base_name = os.path.basename(fq)
-            if fq.endswith(".fastq.gz"):
-                out_fq = os.path.join(
-                    self.chopper_dir,
-                    base_name.replace(".fastq.gz", "_trimmed.fastq")
-                )
-            else:
-                out_fq = os.path.join(
-                    self.chopper_dir,
-                    base_name.replace(".fastq", "_trimmed.fastq")
-                )
-            unmapped_fq = os.path.join(
-                self.minimap2_dir,
-                base_name.replace(".fastq.gz", "")
-                         .replace(".fastq", "")
-                         + "_unmapped.fastq"
+            out_fq = os.path.join(
+                self.chopper_dir,
+                base_name.replace(".fastq.gz", "_trimmed.fastq")
+                         .replace(".fastq", "_trimmed.fastq")
             )
-            if not os.path.exists(unmapped_fq):
+            sam_alignment = os.path.join(
+                self.minimap2_dir,
+                base_name.replace(".fastq.gz", "_alignment.sam")
+                         .replace(".fastq", "_alignment.sam")
+            )
+            if not os.path.isfile(sam_alignment) or os.path.getsize(sam_alignment) == 0:
                 self.log("INFO", f"Mapping reads from {base_name}...")
                 cmd_map = (
                     f"minimap2 -a -x {mapping_preset} -t 1 "
                     f"{self.mapping} {out_fq} "
-                    f"> {unmapped_fq.replace('_unmapped.fastq', '_alignment.sam')}"
+                    f"> {sam_alignment}"
                 )
                 self.log("RUN", f"{cmd_map}")
                 subprocess.run(cmd_map, shell=True, check=True)
@@ -239,27 +234,28 @@ class Preprocessing:
 
         def run_samtools_single(fq):
             base_name = os.path.basename(fq)
-            unmapped_fq = os.path.join(
+            sam_alignment = os.path.join(
                 self.minimap2_dir,
-                base_name.replace(".fastq.gz", "")
-                         .replace(".fastq", "")
-                         + "_unmapped.fastq"
+                base_name.replace(".fastq.gz", "_alignment.sam")
+                         .replace(".fastq", "_alignment.sam")
             )
-            if not os.path.exists(unmapped_fq):
+            unmapped_bam = sam_alignment.replace("_alignment.sam", "_unmapped.bam")
+            unmapped_fq = unmapped_bam.replace("_unmapped.bam", "_unmapped.fastq")
+            if not os.path.isfile(unmapped_fq) or os.path.getsize(unmapped_fq) == 0:
                 self.log("INFO", f"Extracting reads from {os.path.basename(unmapped_fq)}...")
                 cmd_samtools = (
                     f"samtools view -bf 4 "
-                    f"{unmapped_fq.replace('_unmapped.fastq', '_alignment.sam')} "
-                    f"> {unmapped_fq.replace('_unmapped.fastq', '_unmapped.bam')} && "
+                    f"{sam_alignment} "
+                    f"> {unmapped_bam} && "
                     f"samtools fastq "
-                    f"{unmapped_fq.replace('_unmapped.fastq', '_unmapped.bam')} "
+                    f"{unmapped_bam} "
                     f"> {unmapped_fq}"
                 )
                 self.log("RUN", f"{cmd_samtools}")
                 subprocess.run(cmd_samtools, shell=True, check=True)
-                self.log("INFO", f"Reads extracted from {unmapped_fq.replace('_unmapped.fastq', '_unmapped.bam')}")
+                self.log("INFO", f"Unmapped reads extracted from {base_name}")
             else:
-                self.log("INFO", f"samtools output already exists for {base_name}")
+                self.log("INFO", f"Unmapped reads already exist for {base_name}")
 
         # ---------- Run in parallel ----------
         self.parallel_execution(run_samtools_single, fastqs)
@@ -272,34 +268,23 @@ class Preprocessing:
         def run_SeqKit_single(fq):
             base_name = os.path.basename(fq)
             if self.mapping in [None, "None"]:
-                if fq.endswith(".fastq.gz"):
-                    input_fq = os.path.join(
-                        self.chopper_dir,
-                        base_name.replace(".fastq.gz", "_trimmed.fastq")
-                    )
-                else:
-                    input_fq = os.path.join(
-                        self.chopper_dir,
-                        base_name.replace(".fastq", "_trimmed.fastq")
-                    )
+                input_fq = os.path.join(
+                    self.chopper_dir,
+                    base_name.replace(".fastq.gz", "_trimmed.fastq")
+                             .replace(".fastq", "_trimmed.fastq")
+                )
             else:
-                if fq.endswith(".fastq.gz"):
-                    input_fq = os.path.join(
+                input_fq = os.path.join(
                         self.minimap2_dir,
                         base_name.replace(".fastq.gz", "_unmapped.fastq")
-                    )
-                else:
-                    input_fq = os.path.join(
-                        self.minimap2_dir,
-                        base_name.replace(".fastq", "_unmapped.fastq")
-                    )
+                                 .replace(".fastq", "_unmapped.fastq")
+                )
             output_fq = os.path.join(
                 self.seqkit_dir,
-                base_name.replace(".fastq.gz", "")
-                         .replace(".fastq", "")
-                         + "_segmented.fastq"
+                base_name.replace(".fastq.gz", "_segmented.fastq")
+                         .replace(".fastq", "_segmented.fastq")
             )
-            if not os.path.exists(output_fq):
+            if not os.path.isfile(output_fq) or os.path.getsize(output_fq) == 0:
                 self.log("INFO", f"Segmenting reads for {input_fq}...")
                 cmd = (
                     f"seqkit sliding "
@@ -310,7 +295,7 @@ class Preprocessing:
                 )
                 self.log("RUN", f"{cmd}")
                 subprocess.run(cmd, shell=True, check=True)
-                self.log("INFO", f"Segmenting completed for {input_fq}")
+                self.log("INFO", f"Segmenting completed for {base_name}")
             else:
                 self.log("INFO", f"Segmented file already exists for {base_name}")
                 return
@@ -434,7 +419,7 @@ class TaxonomicClassification:
             kraken_cmd = (
                 f"kraken2 "
                 f"--db {self.temp_db_path} "
-                f"--threads {threads} "
+                f"--threads {self.threads} "
                 f"--output {kraken_output} "
                 f"--report {kraken_report} "
                 f"--confidence {self.confidence} "
@@ -475,26 +460,26 @@ class TaxonomicClassification:
                 )
 
                 # Skip if already exists
-                if os.path.exists(bracken_output_s) and os.path.getsize(bracken_output_s) > 0:
+                if not os.path.exists(bracken_output_s) or os.path.getsize(bracken_output_s) == 0:
+                    self.log("INFO", f"Running Bracken at {level_name} level for sample {sample_name}...")
+                    bracken_cmd = (
+                        f"bracken "
+                        f"-d {self.db_path} "
+                        f"-i {kraken_report} "
+                        f"-o {bracken_output_s} "
+                        f"-w {bracken_report_s} "
+                        f"-r {self.minlength} "
+                        f"-l {level_code}"
+                    )
+                    self.log("RUN", bracken_cmd)
+                    try:
+                        subprocess.run(bracken_cmd, shell=True, check=True)
+                    except subprocess.CalledProcessError as e:
+                        self.log("ERROR", f"Bracken failed at {level_name} level for sample {sample_name}")
+                        exceptions.append(level_name)
+                    print()
+                else:
                     self.log("INFO", f"Bracken {level_name} file already exists for sample {sample_name}")
-                    continue
-                bracken_cmd = (
-                    f"bracken "
-                    f"-d {self.db_path} "
-                    f"-i {kraken_report} "
-                    f"-o {bracken_output_s} "
-                    f"-w {bracken_report_s} "
-                    f"-r {self.minlength} "
-                    f"-l {level_code}"
-                )
-                self.log("INFO", f"Running Bracken at {level_name} level for sample {sample_name}...")
-                self.log("RUN", bracken_cmd)
-                try:
-                    subprocess.run(bracken_cmd, shell=True, check=True)
-                except subprocess.CalledProcessError as e:
-                    self.log("ERROR", f"Bracken failed at {level_name} level for sample {sample_name}")
-                    exceptions.append(level_name)
-                print()
             if not exceptions:
                 self.log("INFO", "Bracken completed for all taxonomic levels\n")
             else:
@@ -515,21 +500,18 @@ class TaxonomicClassification:
             for report in bracken_reports:
                 sample_name = os.path.splitext(os.path.basename(report))[0]
                 output_file = os.path.join(OUTPUT_DIR_biom, f"{sample_name}.biom")
-
-                # Skip if BIOM already exists
-                if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
+                if not os.path.exists(output_file) or os.path.getsize(output_file) == 0:
+                    self.log("INFO", f"Generating BIOM from Kraken2-style reports for {sample_name}...")
+                    cmd_biom = (
+                        f"kraken-biom {report} "
+                        f"--fmt json "
+                        f"--output_fp {output_file} "
+                        f"--max D --min S"
+                    )
+                    self.log("RUN", cmd_biom)
+                    subprocess.run(cmd_biom, shell=True, check=True)
+                else:
                     self.log("INFO", f"BIOM for {sample_name} already exists")
-                    continue
-
-                # Build command for this single file
-                cmd_biom = (
-                    f"kraken-biom {report} "
-                    f"--fmt json "
-                    f"--output_fp {output_file} "
-                    f"--max D --min S"
-                )
-                self.log("INFO", f"Generating BIOM from Kraken2-style reports for {sample_name}...")
-                subprocess.run(cmd_biom, shell=True, check=True)
 
             self.log("INFO", f"BIOM tables generated\n")
 
