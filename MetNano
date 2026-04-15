@@ -32,6 +32,7 @@ OPTIONAL ARGUMENTS:
 -c [confidence kraken2] : Confidence score used for Kraken2 (default = 0.1)
 -m [reference genome]	: FASTA file of host reference genome (default = none)
 -u [T or F]		: Unzip raw FASTQs from MinKNOW folder output
+-t [INT]      : Number of threads (default = 2)
 
 ADDITIONAL OPTIONS:
 -h                	: Display this help message and exit
@@ -53,7 +54,7 @@ usage() {
 }
 
 # Parse arguments using getopts
-while getopts "L:o:n:f:q:l:d:c:m:u:h:" opt; do
+while getopts "L:o:n:f:q:l:d:c:m:u:t:h" opt; do
     case $opt in
         L) list="$OPTARG" ;;
         o) output_dir="$OPTARG" ;;
@@ -65,10 +66,13 @@ while getopts "L:o:n:f:q:l:d:c:m:u:h:" opt; do
         c) confidence="$OPTARG" ;;
         m) mapping="$OPTARG" ;;
         u) unzip="$OPTARG" ;;
+        t) threads="$OPTARG" ;;
         h) usage ;;
         *) usage ;;
     esac
 done
+
+# Display help message
 
 # Ensure mandatory parameters are provided
 if [ -z "$list" ] || [ -z "$output_dir" ] || [ -z "$database" ]; then
@@ -105,6 +109,10 @@ if [ -z "$unzip" ]; then
         unzip="False"
 fi
 
+if [ -z "$threads" ]; then
+        threads=2
+fi
+
 # Check if user specified a FASTQ directory
 if [ -z "$list" ]; then
     echo -e "$USAGE"
@@ -129,4 +137,5 @@ python3 $DIR/scripts/run_container_MetNano.py \
     -c $confidence \
     -d $database \
     -m $mapping \
-    -u $unzip
+    -u $unzip \
+    -t $threads

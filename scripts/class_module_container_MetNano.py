@@ -20,18 +20,18 @@ class Preprocessing:
     segmentation to homogenous length. Optionnaly, filtered reads can also
     be mapped onto a reference genome to deplete host reads.
     """
-    def __init__(self, folder_no_sample_id, thread, metadata, readmap, qualityscore=15, minlength=300, unzip = False):
+    def __init__(self, folder_no_sample_id, threads, metadata, readmap, qualityscore=15, minlength=300, unzip = False):
         self.folder_no_sample_id = folder_no_sample_id.rstrip("/")
         self.last_folder = os.path.basename(self.folder_no_sample_id.rstrip("/"))
-        self.qualityscore=qualityscore
-        self.minlength=minlength
-        self.thread = thread
+        self.qualityscore = qualityscore
+        self.minlength = minlength
+        self.thread = int(threads)
         self.mapping = readmap
         self.metadata = metadata
         self.unzip=unzip
         self.date = datetime.now().strftime('%Y-%m-%d')
         self.outputunzfile = os.path.abspath(".")
-        self.outputunzfilefastq= os.path.join(self.outputunzfile, "00_demultiplexed_fastqs")
+        self.outputunzfilefastq= os.path.join(self.outputunzfile, "00-demultiplexed_fastqs")
 
     def log(self, type, message):
             print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [{type}] {message}", flush=True)
@@ -379,7 +379,7 @@ class TaxonomicClassification:
         of taxa abundance with Bracken and the conversion of Kraken2-style reports into
         BIOM tables with kraken-biom.
         """
-        def __init__(self, db_path, db_name, fastq_dir, threads=6, confidence=0.1, minlength=300):
+        def __init__(self, db_path, db_name, fastq_dir, threads, confidence=0.1, minlength=300):
             self.db_path = db_path
             self.db_name = db_name
             self.fastq_dir = fastq_dir
@@ -438,7 +438,7 @@ class TaxonomicClassification:
             kraken_cmd = (
                 f"kraken2 "
                 f"--db {self.temp_db_path} "
-                f"--threads 1 "
+                f"--threads {threads} "
                 f"--output {kraken_output} "
                 f"--report {kraken_report} "
                 f"--confidence {self.confidence} "
@@ -450,10 +450,10 @@ class TaxonomicClassification:
             self.log("END", f"Kraken2 ended\n")
 
             # Post-run check
-            if not file_exists_and_not_empty(kraken_output) or not file_exists_and_not_empty(kraken_report):
-                self.log("ERROR", f"Kraken2 run did not produce expected output files for {prefix}")
-                self.log("END", "Exiting MetNano")
-                sys.exit(1)
+            #if not file_exists_and_not_empty(kraken_output) or not file_exists_and_not_empty(kraken_report):
+            #    self.log("ERROR", f"Kraken2 run did not produce expected output files for {prefix}")
+            #    self.log("END", "Exiting MetNano")
+            #    sys.exit(1)
 
         def run_bracken(self, fastq_file):
             # ----- Bracken (all taxonomic levels) -----

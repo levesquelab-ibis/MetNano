@@ -20,6 +20,7 @@ parser.add_argument("-c", "--confidence", help="kraken2 confidence score.")
 parser.add_argument("-m", "--mapping", help="mapping to ref.")
 parser.add_argument("-f", "--force_set", help="Force set.")
 parser.add_argument("-u", "--unzip", help="unzip fastq.")
+parser.add_argument("-t", "--threads", help="number of threads.")
 
 # Parse the arguments
 args = parser.parse_args()
@@ -35,6 +36,7 @@ confidence = args.confidence
 database = args.database
 mapping = args.mapping
 unzip = args.unzip
+threads = args.threads
 
 database_name= os.path.basename(os.path.normpath(database))
 
@@ -49,6 +51,7 @@ print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] read mapp
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] kraken2 confidence score: {confidence}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] kraken2 database: {database}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] unzip: {unzip}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] threads: {threads}")
 
 # Add the directory containing your scripts to the Python path
 #sys.path.append('/mnt/ibis/rclevesq/software/nanobatch_wgs/lspq_validation/src')
@@ -56,7 +59,7 @@ print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] unzip: {u
 # Run Demultiplexing and QC pipeline
 preprocessed = Preprocessing(
     folder_nanopore,
-    6,
+    threads,
     association_file,
     mapping,
     qualityscore,
@@ -68,12 +71,12 @@ preprocessed.run_all()
 
 # Run read taxonomic classification and taxa abundance estimation pipeline
 classified = TaxonomicClassification(
-    db_path=database,
-    db_name=database_name,
-    fastq_dir=preprocessed.seqkit_dir,
-    threads=6,
-    confidence=confidence,
-    minlength=minlength
+    database,
+    database_name,
+    preprocessed.seqkit_dir,
+    threads,
+    confidence,
+    minlength
 )
 
 classified.run_all()
