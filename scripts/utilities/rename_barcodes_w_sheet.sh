@@ -7,12 +7,10 @@ if [ -z "$1" ]; then
 fi
 
 while IFS=$'\t' read -r BC ID; do
-    echo "Converting name $BC to $ID..."
-    
     # Match files ending with $BC.fastq
     for f in *"$BC".fastq; do
         if [ -e "$f" ]; then
-            mv -v "$f" "${ID}.fastq"
+            mv "$f" "${ID}.fastq"
         fi
     done
 
@@ -22,5 +20,5 @@ mkdir -p removed
 shopt -s nullglob
 files=( *barcode* )
 if [ ${#files[@]} -gt 0 ]; then
-    mv -v "${files[@]}" removed/
+    mv "${files[@]}" removed/
 fi
