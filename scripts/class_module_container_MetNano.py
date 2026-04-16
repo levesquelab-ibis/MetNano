@@ -38,7 +38,7 @@ class Preprocessing:
 
     def parallel_execution(self, function, fastqs):
         # ---------- Parallel execution ----------
-        with ThreadPoolExecutor(max_workers=self.thread) as exe:
+        with ThreadPoolExecutor(max_workers = self.max_workers) as exe:
                       future_map = {
                            exe.submit(function, fq): fq
                            for fq in fastqs
@@ -129,7 +129,7 @@ class Preprocessing:
                     f"NanoPlot --fastq {fq} "
                     f"--outdir {nanoplot_out} "
                     f"--prefix {sample}_ "
-                    f"-t 1"
+                    f"-t {self.threads_per_task}"
                 )
                 self.log("RUN", f"{nanoplot_cmd}")
                 with open(nanoplot_log, "w") as log:
@@ -184,8 +184,8 @@ class Preprocessing:
                 self.log("INFO", f"Trimming file {sample}...")
                 chopper_cmd = (
                     f"cat {fq} | "
-                    f"chopper --headcrop {head_trim} --tailcrop {tail_trim} -t 1 | "
-                    f"chopper -q {self.qualityscore} -l {self.minlength} -t 1 "
+                    f"chopper --headcrop {head_trim} --tailcrop {tail_trim} -t {self.threads_per_task} | "
+                    f"chopper -q {self.qualityscore} -l {self.minlength} -t {self.threads_per_task} "
                     f"> {trimmed_fastq}"
                 )
                 self.log("RUN", f"{chopper_cmd}")
@@ -217,7 +217,7 @@ class Preprocessing:
             if not os.path.isfile(sam_alignment) or os.path.getsize(sam_alignment) == 0:
                 self.log("INFO", f"Mapping reads from {sample}...")
                 minimap2_cmd = (
-                    f"minimap2 -a -x {mapping_preset} -t 1 "
+                    f"minimap2 -a -x {mapping_preset} -t {self.threads_per_task} "
                     f"{self.mapping} {trimmed_fastq} "
                     f"> {sam_alignment}"
                 )
@@ -251,6 +251,7 @@ class Preprocessing:
                 self.log("INFO", f"Extracting reads from {os.path.basename(unmapped_fq)}...")
                 samtools_cmd = (
                     f"samtools view -bf 4 "
+                    f"-@ {self.threads_per_task} "
                     f"{sam_alignment} "
                     f"> {unmapped_bam} && "
                     f"samtools fastq "
@@ -318,13 +319,19 @@ class Preprocessing:
         self.run_rename()
 
         # Get FASTQ file list for task parallelization
+        print("\n# Adding parameters", flush=True)
         fastqs = glob.glob(os.path.join(self.outputunzfilefastq, "*.fastq*"))
-        print()
-        self.log("INFO", f"FASTQ file found: {len(fastqs)}\n")
+        self.log("INFO", f"FASTQ file found: {len(fastqs)}")
         if not fastqs:
             self.log("ERROR", f"No FASTQ files found in {self.outputunzfilefastq}")
             self.log("END", "Exiting MetNano")
             sys.exit(1)
+
+        # Calculate optimal number of threads per task
+        total_cpus = os.process_cpu_count()
+        self.max_workers = min(len(fastqs), total_cpus)
+        self.threads_per_task = max(1, total_cpus // self.max_workers)
+        self.log("INFO", f"Threads per parallel task = {self.threads_per_task}\n")
 
         # Run assembly-stats
         print(f"# Compute sequencing statistics with assembly-stats", flush=True)

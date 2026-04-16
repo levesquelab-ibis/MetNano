@@ -53,6 +53,9 @@ print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Kraken2 d
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Unzip FASTQs: {unzip}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Number of threads: {threads}")
 
+total_cpus = os.process_cpu_count()
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Number of CPUs: {total_cpus}")
+
 # Run Demultiplexing and QC pipeline
 preprocessed = Preprocessing(
     folder_nanopore,
