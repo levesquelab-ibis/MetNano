@@ -24,6 +24,7 @@ class Preprocessing:
         self.ont_folder = os.path.basename(self.ont_folder_path.rstrip("/"))
         self.qualityscore = qualityscore
         self.minlength = minlength
+        self.parameters = f"min_{minlength}bp_{qualityscore}Q"
         self.threads = int(threads)
         self.mapping = readmap
         self.metadata = metadata
@@ -172,7 +173,7 @@ class Preprocessing:
 
     def run_chopper_parallel(self, fastqs):
         # ---------- Run chopper with selected parameters (see parameter_MetNano.py file) ----------
-        self.chopper_dir = os.path.join(self.output_folder, "04-chopper")
+        self.chopper_dir = os.path.join(self.output_folder, "04-chopper", self.parameters)
         os.makedirs(self.chopper_dir, exist_ok=True)
 
         def run_chopper_single(fq):
@@ -205,7 +206,7 @@ class Preprocessing:
 
     def run_minimap2_parallel(self, fastqs):
         # ---------- Run minimap2 with selected parameters (see parameter_MetNano.py file) ----------
-        self.minimap2_dir = os.path.join(self.output_folder, "04b-minimap2")
+        self.minimap2_dir = os.path.join(self.output_folder, "04b-minimap2", self.parameters)
         os.makedirs(self.minimap2_dir, exist_ok=True)
 
         def run_minimap2_single(fq):
@@ -273,7 +274,7 @@ class Preprocessing:
 
     def run_SeqKit_parallel(self, fastqs):
         # ---------- Run seqkit with selected parameters (see parameter_MetNano.py file) ----------
-        self.seqkit_dir = os.path.join(self.output_folder, "05-SeqKit")
+        self.seqkit_dir = os.path.join(self.output_folder, "05-SeqKit", self.parameters)
         os.makedirs(self.seqkit_dir, exist_ok=True)
 
         def run_SeqKit_single(fq):
