@@ -19,7 +19,7 @@ class Preprocessing:
     segmentation to homogenous length. Optionnaly, filtered reads can also
     be mapped onto a reference genome to deplete host reads.
     """
-    def __init__(self, ont_folder_path, threads, metadata, readmap, qualityscore, minlength, unzip):
+    def __init__(self, ont_folder_path, threads, metadata, readmap, qualityscore, minlength, unzip, rename):
         self.ont_folder_path = ont_folder_path.rstrip("/")
         self.ont_folder = os.path.basename(self.ont_folder_path.rstrip("/"))
         self.qualityscore = qualityscore
@@ -27,7 +27,8 @@ class Preprocessing:
         self.threads = int(threads)
         self.mapping = readmap
         self.metadata = metadata
-        self.unzip  =unzip
+        self.unzip  = unzip
+        self.rename = rename
         self.output_folder = os.path.abspath(".")
         self.output_folder_fastq= os.path.join(self.output_folder, "00-demultiplexed_fastqs")
 
@@ -302,7 +303,7 @@ class Preprocessing:
         self.parallel_execution(run_SeqKit_single, fastqs)
 
     def run_all(self):
-        # Unzip and concatenate FASTQ in raw ONT folder if --unzip True
+        # Unzip and concatenate FASTQ in raw ONT folder
         if self.unzip == "True":
             print("\n# Unzip FASTQ files", flush = True)
             self.run_unzip()
@@ -311,8 +312,9 @@ class Preprocessing:
             self.create_ln_file()
 
         # Rename FASTQ files
-        print(f"\n# Renaming barcodes", flush=True)
-        self.run_rename()
+        if self.rename == "True":
+            print(f"\n# Renaming barcodes", flush=True)
+            self.run_rename()
 
         # Get FASTQ file list for task parallelization
         print("\n# Adding parameters", flush=True)

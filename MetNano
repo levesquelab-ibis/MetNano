@@ -16,23 +16,22 @@ MetNano runs a metagenomic analysis pipeline using provided FASTQ files from Nan
 It is the first step to process the raw basecall data compiled in one file fastQ folder
 
 USAGE:
-./MetNano -L [association_file] -o [output_dir] -n [dir_with_nanopore_fastqs] -d [kraken2_database]
+./MetNano -f [FASTQ_directory] -o [output_directory] -d [kraken2_database]
 
-MANDATORY ARGUMENTS:
--L [association_file]  		: Path to the association file containing the barcode IDs and associated sample names
--o [output_dir]			: Path to the output directory where results will be stored
--n [input_folder_nanopore] 	: Directory containing Nanopore FASTQ files
--d [kraken2_database]   	: Database used by Kraken2
+REQUIRED ARGUMENTS:
+-f [FASTQ_directory] 	: Directory containing Nanopore FASTQ files
+-o [output_directory]	: Path to the output directory where results will be stored
+-d [kraken2_database]   : Database used by Kraken2
 
 OPTIONAL ARGUMENTS:
--f [T or F]    		: Use previous folder regardless of the date (default = F)
--Q [T or F]    		: Perform the quality check on FASTQs (default = T)
+-r                      : Rename FASTQs using association file (-a)
+-a [association_file]  	: Path to the association file containing the barcode IDs and associated sample names (required if -r is provided)
 -q [minQ]      		: Nanopore quality score filtering parameter used for chopper (default  = 15)
 -l [minlength] 		: Nanopore sequence length filtering parameter used for chopper (default  = 300)
 -c [confidence kraken2] : Confidence score used for Kraken2 (default = 0.1)
 -m [reference genome]	: FASTA file of host reference genome (default = none)
--u [T or F]		: Unzip raw FASTQs from MinKNOW folder output
--t [INT]      : Number of threads (default = 2)
+-u                      : Unzip raw FASTQs from MinKNOW folder output
+-t [INT]                : Number of threads (default = 2)
 
 ADDITIONAL OPTIONS:
 -h                	: Display this help message and exit
@@ -44,9 +43,6 @@ AUTHORS:
 Guillaume Nguyen, Jeff Gauthier and Anthony Piot (Levesque Lab)
 '
 
-# Default values for optional parameters
-nano_dir=""
-
 # Function to display usage information
 usage() {
     echo -e "$USAGE"
@@ -54,45 +50,37 @@ usage() {
 }
 
 # Parse arguments using getopts
-while getopts "L:o:n:f:q:l:d:c:m:u:t:h" opt; do
+while getopts "o:f:q:l:d:c:m:a:t:ruh" opt; do
     case $opt in
-        L) list="$OPTARG" ;;
+        a) list="$OPTARG" ;;
         o) output_dir="$OPTARG" ;;
-        n) nano_dir="$OPTARG" ;;
-        f) FORCE="$OPTARG" ;;
+        f) FASTQ_dir="$OPTARG" ;;
         q) qualityscore="$OPTARG" ;;
         l) minlength="$OPTARG" ;;
         d) database="$OPTARG" ;;
         c) confidence="$OPTARG" ;;
         m) mapping="$OPTARG" ;;
-        u) unzip="$OPTARG" ;;
+        r) rename="True" ;;
+        u) unzip="True" ;;
         t) threads="$OPTARG" ;;
         h) usage ;;
         *) usage ;;
     esac
 done
 
-# Display help message
-
 # Ensure mandatory parameters are provided
-if [ -z "$list" ] || [ -z "$output_dir" ] || [ -z "$database" ]; then
+if [ -z "$FASTQ_dir" ] || [ -z "$output_dir" ] || [ -z "$database" ]; then
         echo ""
-		echo "Error: Missing required arguments. Check association file (-L), kraken2 database (-d), and output_dir (-o)"
+    echo "Error: Missing required arguments. Check FASTQ directory (-f), output_dir (-o), and kraken2 database (-d)"
         usage
         exit 1
 fi
 
-if [ -z "$FORCE" ]; then
-        FORCE_SET="F"
-        else
-        FORCE_SET="$FORCE"
-fi
-
+# Optional
 if [ -z "$mapping" ]; then
         mapping="None"
 fi
 
-# Optional
 if [ -z "$qualityscore" ]; then
         qualityscore=15
 fi
@@ -105,21 +93,24 @@ if [ -z "$confidence" ]; then
         confidence=0.1
 fi
 
+if [ -z "$rename" ]; then
+        rename="False"
+      else
+        rename="True"
+fi
+
 if [ -z "$unzip" ]; then
         unzip="False"
+      else
+        unzip="True"
 fi
 
 if [ -z "$threads" ]; then
         threads=2
 fi
 
-# Check if user specified a FASTQ directory
-if [ -z "$list" ]; then
-    echo -e "$USAGE"
-    exit 1
-else
-    mkdir -p "$output_dir"
-fi
+# Create output directory if needed
+mkdir -p "$output_dir"
 
 # Move to working directory
 cd $output_dir
@@ -129,9 +120,9 @@ DIR=$(dirname $(realpath $0))
 
 # Lauch MetNano pipeline
 python3 $DIR/scripts/run_container_MetNano.py \
-    -n $nano_dir \
-    -f $FORCE_SET \
-    -L $list \
+    -f $FASTQ_dir \
+    -r $rename \
+    -a $list \
     -l $minlength \
     -q $qualityscore \
     -c $confidence \
