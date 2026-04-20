@@ -21,6 +21,7 @@ parser.add_argument("-r", "--rename", help="rename FASTQs.")
 parser.add_argument("-a", "--association_file", help="association file.")
 parser.add_argument("-u", "--unzip", help="unzip FASTQs.")
 parser.add_argument("-t", "--threads", help="number of threads.")
+parser.add_argument("-n", "--memory_mapping", help="Folder to copy Kraken2 database for --memory_mapping.")
 
 # Parse the arguments
 args = parser.parse_args()
@@ -37,8 +38,7 @@ mapping = args.mapping
 rename = args.rename
 unzip = args.unzip
 threads = args.threads
-
-database_name= os.path.basename(os.path.normpath(database))
+memory_mapping = args.memory_mapping
 
 print("# Starting MetNano with the following parameters:", flush=True)
 
@@ -52,6 +52,7 @@ print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Read mini
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Reference genome: {mapping}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Kraken2 confidence score: {confidence}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Kraken2 database: {database}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Kraken2 memory mapping: {memory_mapping}")
 total_cpus = os.process_cpu_count()
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Number of CPUs: {total_cpus}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Number of threads: {threads}")
@@ -73,11 +74,11 @@ preprocessed.run_all()
 # Run read taxonomic classification and taxa abundance estimation pipeline
 classified = TaxonomicClassification(
     database,
-    database_name,
     preprocessed.seqkit_dir,
     threads,
     confidence,
-    minlength
+    minlength,
+    memory_mapping
 )
 
 classified.run_all()

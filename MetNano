@@ -24,13 +24,14 @@ REQUIRED ARGUMENTS:
 -d [kraken2_database]   : Database used by Kraken2
 
 OPTIONAL ARGUMENTS:
+-u                      : Unzip raw FASTQs from MinKNOW folder output
 -r                      : Rename FASTQs using association file (-a)
 -a [association_file]  	: Path to the association file containing the barcode IDs and associated sample names (required if -r is provided)
 -q [minQ]      		: Nanopore quality score filtering parameter used for chopper (default  = 15)
 -l [minlength] 		: Nanopore sequence length filtering parameter used for chopper (default  = 300)
--c [confidence kraken2] : Confidence score used for Kraken2 (default = 0.1)
 -m [reference genome]	: FASTA file of host reference genome (default = none)
--u                      : Unzip raw FASTQs from MinKNOW folder output
+-c [confidence kraken2] : Confidence score used for Kraken2 (default = 0.1)
+-n [path_to_copy_db]    : Copy kraken2 database into temporay in-memory filesystem for use with --memore-mapping option in Kraken2. Typically use /dev/shm/ if available
 -t [INT]                : Number of threads (default = 2)
 
 ADDITIONAL OPTIONS:
@@ -50,7 +51,7 @@ usage() {
 }
 
 # Parse arguments using getopts
-while getopts "o:f:q:l:d:c:m:a:t:ruh" opt; do
+while getopts "o:f:q:l:d:c:m:a:t:n:ruh" opt; do
     case $opt in
         a) list="$OPTARG" ;;
         o) output_dir="$OPTARG" ;;
@@ -60,6 +61,7 @@ while getopts "o:f:q:l:d:c:m:a:t:ruh" opt; do
         d) database="$OPTARG" ;;
         c) confidence="$OPTARG" ;;
         m) mapping="$OPTARG" ;;
+        n) memory_mapping="$OPTARG" ;;
         r) rename="True" ;;
         u) unzip="True" ;;
         t) threads="$OPTARG" ;;
@@ -105,6 +107,10 @@ if [ -z "$unzip" ]; then
         unzip="True"
 fi
 
+if [ -z "$memory_mapping" ]; then
+        memory_mapping="False"
+fi
+
 if [ -z "$threads" ]; then
         threads=2
 fi
@@ -129,4 +135,5 @@ python3 $DIR/scripts/run_container_MetNano.py \
     -d $database \
     -m $mapping \
     -u $unzip \
-    -t $threads
+    -t $threads \
+    -n $memory_mapping

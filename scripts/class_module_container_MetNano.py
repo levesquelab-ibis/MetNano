@@ -370,17 +370,19 @@ class TaxonomicClassification:
         of taxa abundance with Bracken and the conversion of Kraken2-style reports into
         BIOM tables with kraken-biom.
         """
-        def __init__(self, db_path, db_name, fastq_dir, threads, confidence, minlength):
+        def __init__(self, db_path, fastq_dir, threads, confidence, minlength, memory_mapping):
             self.db_path = db_path
-            self.db_name = db_name
+            self.db_name = os.path.basename(os.path.normpath(self.db_path))
             self.fastq_dir = fastq_dir
             self.out_dir = os.path.abspath(".")
             self.threads = threads
             self.confidence = confidence
             self.minlength = minlength
-            self.temp_db_path = os.path.join("/dev/shm", self.db_name)
+            self.memory_mapping = memory_mapping
+            self.temp_db_path = os.path.join(memory_mapping, self.db_name)
             self.kraken2_dir = os.path.join(self.out_dir, "06-Kraken2", self.db_name)
             self.required_files = ["hash.k2d", "opts.k2d", "taxo.k2d"]
+            print(self.memory_mapping)
 
         def log(self, type, message):
             print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [{type}] {message}", flush=True)
@@ -413,21 +415,37 @@ class TaxonomicClassification:
             kraken2_output = os.path.join(self.kraken2_dir, f"{prefix}.all")
             kraken2_report = os.path.join(self.kraken2_dir, f"{prefix}.report")
             kraken2_log = os.path.join(self.kraken2_dir, f"{prefix}.log")
-            missing_files = [f for f in self.required_files if not os.path.exists(os.path.join(self.temp_db_path, f))]
-            if missing_files:
-                self.log("ERROR", f"Missing required DB files in RAM: {missing_files}")
-                self.log("END", "Exiting MetNano")
-                sys.exit(1)
-            kraken2_cmd = (
-                f"kraken2 "
-                f"--db {self.temp_db_path} "
-                f"--threads {self.threads} "
-                f"--output {kraken2_output} "
-                f"--report {kraken2_report} "
-                f"--confidence {self.confidence} "
-                f"--memory-mapping "
-                f"{fastq_file}"
-            )
+            if self.memory_mapping != "False":
+                missing_files = [f for f in self.required_files if not os.path.exists(os.path.join(self.temp_db_path, f))]
+                if missing_files:
+                    self.log("ERROR", f"Missing required DB files in RAM: {missing_files}")
+                    self.log("END", "Exiting MetNano")
+                    sys.exit(1)
+                kraken2_cmd = (
+                    f"kraken2 "
+                    f"--db {self.temp_db_path} "
+                    f"--threads {self.threads} "
+                    f"--output {kraken2_output} "
+                    f"--report {kraken2_report} "
+                    f"--confidence {self.confidence} "
+                    f"--memory-mapping "
+                    f"{fastq_file}"
+                )
+            else:
+                missing_files = [f for f in self.required_files if not os.path.exists(os.path.join(self.db_path, f))]
+                if missing_files:
+                    self.log("ERROR", f"Missing required DB files in RAM: {missing_files}")
+                    self.log("END", "Exiting MetNano")
+                    sys.exit(1)
+                kraken2_cmd = (
+                    f"kraken2 "
+                    f"--db {self.db_path} "
+                    f"--threads {self.threads} "
+                    f"--output {kraken2_output} "
+                    f"--report {kraken2_report} "
+                    f"--confidence {self.confidence} "
+                    f"{fastq_file}"
+                )
             self.log("INFO", f"Running Kraken2 for {prefix}")
             with open(kraken2_log, "a") as log:
                 subprocess.run(
@@ -540,7 +558,8 @@ class TaxonomicClassification:
 
                 # Only load RAM if needed
                 if files_to_run:
-                    self.copy_db_to_ramdisk()
+                    if self.memory_mapping != "False":
+                        self.copy_db_to_ramdisk()
 
                     # Run Kraken2
                     print("# Read taxonomic classification with Kraken2", flush = True)
