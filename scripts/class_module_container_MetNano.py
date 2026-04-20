@@ -11,7 +11,6 @@ from datetime import datetime
 from parameter_MetNano import *
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-
 ############### Class for preprocessing raw ONT reads ###############
 class Preprocessing:
     """
@@ -20,18 +19,17 @@ class Preprocessing:
     segmentation to homogenous length. Optionnaly, filtered reads can also
     be mapped onto a reference genome to deplete host reads.
     """
-    def __init__(self, folder_no_sample_id, threads, metadata, readmap, qualityscore, minlength, unzip):
-        self.folder_no_sample_id = folder_no_sample_id.rstrip("/")
-        self.last_folder = os.path.basename(self.folder_no_sample_id.rstrip("/"))
+    def __init__(self, ont_folder_path, threads, metadata, readmap, qualityscore, minlength, unzip):
+        self.ont_folder_path = ont_folder_path.rstrip("/")
+        self.ont_folder = os.path.basename(self.ont_folder_path.rstrip("/"))
         self.qualityscore = qualityscore
         self.minlength = minlength
-        self.thread = int(threads)
+        self.threads = int(threads)
         self.mapping = readmap
         self.metadata = metadata
-        self.unzip=unzip
-        self.date = datetime.now().strftime('%Y-%m-%d')
-        self.outputunzfile = os.path.abspath(".")
-        self.outputunzfilefastq= os.path.join(self.outputunzfile, "00-demultiplexed_fastqs")
+        self.unzip  =unzip
+        self.output_folder = os.path.abspath(".")
+        self.output_folder_fastq= os.path.join(self.output_folder, "00-demultiplexed_fastqs")
 
     def log(self, type, message):
             print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [{type}] {message}", flush=True)
@@ -49,44 +47,44 @@ class Preprocessing:
 
     def run_unzip(self):
         # ---------- Unzip and demultiplex barcoded samples ----------
-        if not os.path.exists(self.outputunzfilefastq) and not os.listdir(self.outputunzfilefastq):
-            self.log("INFO", "Folder unzip {self.outputunzfilefastq} is missing, running {unzip_barcode_script}")
+        if not os.path.exists(self.output_folder_fastq) and not os.listdir(self.output_folder_fastq):
+            self.log("INFO", "Folder unzip {self.output_folder_fastq} is missing, running {unzip_barcode_script}")
             self.log("INFO", "Running unzip_barcode_script ...")
-            unz_cmd = f"{unzip_barcode_script} {self.folder_no_sample_id} {self.thread}"
-            self.log("RUN", f"{unz_cmd}")
-            subprocess.run(unz_cmd, shell=True, check=True)
+            unzip_cmd = f"{unzip_barcode_script} {self.ont_folder_path} {self.threads}"
+            self.log("RUN", f"{unzip_cmd}")
+            subprocess.run(unzip_cmd, shell=True, check=True)
             self.log("INFO", "Unzip and demultiplexing done")
-            os.makedirs(self.outputunzfilefastq, exist_ok=True)
-            unz_cmd = f"mv {self.outputunzfilefastq}/../*_unzipped/*.fastq {self.outputunzfilefastq}"
-            subprocess.run(unz_cmd, shell=True, check=True)
-            rm_cmd = f"rmdir {self.outputunzfilefastq}/../*_unzipped/"
+            os.makedirs(self.output_folder_fastq, exist_ok=True)
+            mv_cmd = f"mv {self.output_folder_fastq}/../*_unzipped/*.fastq {self.output_folder_fastq}"
+            subprocess.run(mv_cmd, shell=True, check=True)
+            rm_cmd = f"rmdir {self.output_folder_fastq}/../*_unzipped/"
             subprocess.run(rm_cmd, shell=True, check=True)
-            self.log("INFO", f"Moved file to {self.outputunzfilefastq}")
+            self.log("INFO", f"Moved file to {self.output_folder_fastq}")
         else:
-            self.log("INFO", "Folder exists, skipping step")
+            self.log("INFO", "FASTQ folder exists, skipping unzipping")
 
     def create_ln_file(self) :
         # ---------- Skip demultiplexing ----------
-        if not os.path.exists(self.outputunzfilefastq) or not os.listdir(self.outputunzfilefastq):
+        if not os.path.exists(self.output_folder_fastq) or not os.listdir(self.output_folder_fastq):
             self.log("INFO", "Demultiplexing step not set with --unzip parameter.")
             self.log("INFO", "Direct copy link from original file to working directory")
-            os.makedirs(self.outputunzfilefastq, exist_ok=True)
-            ln_cmd= f"ln -s {self.folder_no_sample_id}/*.fastq* {self.outputunzfilefastq}/ "
+            os.makedirs(self.output_folder_fastq, exist_ok=True)
+            ln_cmd= f"ln -s {self.ont_folder_path}/*.fastq* {self.output_folder_fastq}/ "
             self.log("RUN", f"{ln_cmd} ")
             subprocess.run(ln_cmd, shell=True, check=True)
             self.log("INFO", "Symbolic link created into working directory")
-        elif os.path.exists(self.outputunzfilefastq):
+        elif os.path.exists(self.output_folder_fastq):
             self.log("INFO", "Symbolic link already exists")
 
     def run_rename(self):
         # ---------- Rename file with metadata provided ----------
-        barcode_fastqs = glob.glob(os.path.join(self.outputunzfilefastq, "*barcode*.fastq*"))
-        fastqs = glob.glob(os.path.join(self.outputunzfilefastq, "*.fastq"))
+        barcode_fastqs = glob.glob(os.path.join(self.output_folder_fastq, "*barcode*.fastq*"))
+        fastqs = glob.glob(os.path.join(self.output_folder_fastq, "*.fastq"))
         if barcode_fastqs:
             self.log("INFO", "Renaming samples with metadata...")
-            rename_cmd = f"{rename_barcodes_w_sheet} {self.metadata}"
+            rename_cmd = f"{rename_barcodes_w_sheet} {self.metadata} {self.output_folder_fastq}"
             self.log("RUN", f"{rename_cmd}")
-            subprocess.run(rename_cmd, shell=True, check=True, cwd=self.outputunzfilefastq)
+            subprocess.run(rename_cmd, shell=True, check=True)
             self.log("INFO", "Renaming samples with metadata done")
         elif fastqs and not barcode_fastqs:
             self.log("INFO", "FASTQ files already renamed")
@@ -96,30 +94,30 @@ class Preprocessing:
             self.log("END", "Exiting MetNano")
             sys.exit(1)
 
-    def assembly_stat(self):
+    def assembly_stats(self):
         # ---------- Generate assembly stats files for all samples in ONT folder ----------
-        out_dir = os.path.join(self.outputunzfile,"01-assembly-stats" )
-        out_file = os.path.join(out_dir ,"assembly-stats.tsv")
-        os.makedirs(out_dir, exist_ok=True)
+        assemblystats_dir = os.path.join(self.output_folder,"01-assembly-stats" )
+        out_file = os.path.join(assemblystats_dir ,"assembly-stats.tsv")
+        os.makedirs(assemblystats_dir, exist_ok=True)
         if not os.path.isfile(out_file) or os.path.getsize(out_file) == 0:
             self.log("INFO", f"Computing sequencing reads statistics...")
-            cmd = f"assembly-stats -t {self.outputunzfilefastq}/*.fastq > {out_file}  "
-            self.log("RUN", f" {cmd} in {self.outputunzfile}")
-            subprocess.run(cmd, shell=True, check=True, cwd=self.outputunzfile)
-            rename_cmd = f"sed -i 's|{self.outputunzfilefastq}/||' {out_file}"
-            subprocess.run(rename_cmd, shell=True, check=True, cwd=self.outputunzfile)
-            self.log("INFO", f"Sequencing statistics written to {out_file}")
+            assemblystats_cmd = f"assembly-stats -t {self.output_folder_fastq}/*.fastq > {out_file}  "
+            self.log("RUN", f"{assemblystats_cmd}")
+            subprocess.run(assemblystats_cmd, shell=True, check=True)
+            rename_cmd = f"sed -i 's|{self.output_folder_fastq}/||' {out_file}"
+            subprocess.run(rename_cmd, shell=True, check=True)
+            self.log("INFO", f"Sequencing statistics computed for all FASTQs")
         else:
             self.log("INFO", "File assembly-stats.tsv already exists")
 
     def run_NanoPlot_parallel(self, fastqs):
         # ---------- Quality Control with NanoPlot ----------
-        self.nanoplot_dir = os.path.join(self.outputunzfile, "02-NanoPlot")
-        os.makedirs(self.nanoplot_dir, exist_ok=True)
+        nanoplot_dir = os.path.join(self.output_folder, "02-NanoPlot")
+        os.makedirs(nanoplot_dir, exist_ok=True)
 
         def run_NanoPlot_single(fq):
             sample = os.path.basename(fq).replace(".fastq", "")
-            nanoplot_out = os.path.join(self.nanoplot_dir, f"NanoPlot_{sample}")
+            nanoplot_out = os.path.join(nanoplot_dir, f"NanoPlot_{sample}")
             nanoplot_html = os.path.join(nanoplot_out, f"{sample}_NanoPlot-report.html")
             nanoplot_log = os.path.join(nanoplot_out, f"{sample}.log")
             os.makedirs(nanoplot_out, exist_ok=True)
@@ -149,12 +147,12 @@ class Preprocessing:
 
     def run_nanoQC_parallel(self, fastqs):
         # ---------- Quality Control with nanoQC ----------
-        self.nanoQC_dir = os.path.join(self.outputunzfile, "03-nanoQC")
-        os.makedirs(self.nanoQC_dir, exist_ok=True)
+        nanoQC_dir = os.path.join(self.output_folder, "03-nanoQC")
+        os.makedirs(nanoQC_dir, exist_ok=True)
 
         def run_nanoQC_single(fq):
             sample = os.path.basename(fq).replace(".fastq", "")
-            nanoQC_out = os.path.join(self.nanoQC_dir, f"nanoQC_{sample}")
+            nanoQC_out = os.path.join(nanoQC_dir, f"nanoQC_{sample}")
             nanoQC_html = os.path.join(nanoQC_out, "nanoQC.html")
             os.makedirs(nanoQC_out, exist_ok=True)
             if not os.path.isfile(nanoQC_html) or os.path.getsize(nanoQC_html) == 0:
@@ -173,7 +171,7 @@ class Preprocessing:
 
     def run_chopper_parallel(self, fastqs):
         # ---------- Run chopper with selected parameters (see parameter_MetNano.py file) ----------
-        self.chopper_dir = os.path.join(self.outputunzfile, "04-chopper")
+        self.chopper_dir = os.path.join(self.output_folder, "04-chopper")
         os.makedirs(self.chopper_dir, exist_ok=True)
 
         def run_chopper_single(fq):
@@ -206,7 +204,7 @@ class Preprocessing:
 
     def run_minimap2_parallel(self, fastqs):
         # ---------- Run minimap2 with selected parameters (see parameter_MetNano.py file) ----------
-        self.minimap2_dir = os.path.join(self.outputunzfile, "04b-minimap2")
+        self.minimap2_dir = os.path.join(self.output_folder, "04b-minimap2")
         os.makedirs(self.minimap2_dir, exist_ok=True)
 
         def run_minimap2_single(fq):
@@ -239,8 +237,6 @@ class Preprocessing:
 
     def run_samtools_parallel(self, fastqs):
         # ---------- Extract unmapped reads with samtools ----------
-        self.minimap2_dir = os.path.join(self.outputunzfile, "04b-minimap2")
-
         def run_samtools_single(fq):
             sample = os.path.basename(fq).replace(".fastq.gz", "").replace(".fastq", "")
             sam_alignment = os.path.join(self.minimap2_dir, sample + "_alignment.sam")
@@ -276,7 +272,7 @@ class Preprocessing:
 
     def run_SeqKit_parallel(self, fastqs):
         # ---------- Run seqkit with selected parameters (see parameter_MetNano.py file) ----------
-        self.seqkit_dir = os.path.join(self.outputunzfile, "05-SeqKit")
+        self.seqkit_dir = os.path.join(self.output_folder, "05-SeqKit")
         os.makedirs(self.seqkit_dir, exist_ok=True)
 
         def run_SeqKit_single(fq):
@@ -320,10 +316,10 @@ class Preprocessing:
 
         # Get FASTQ file list for task parallelization
         print("\n# Adding parameters", flush=True)
-        fastqs = glob.glob(os.path.join(self.outputunzfilefastq, "*.fastq*"))
+        fastqs = glob.glob(os.path.join(self.output_folder_fastq, "*.fastq*"))
         self.log("INFO", f"FASTQ file found: {len(fastqs)}")
         if not fastqs:
-            self.log("ERROR", f"No FASTQ files found in {self.outputunzfilefastq}")
+            self.log("ERROR", f"No FASTQ files found in {self.output_folder_fastq}")
             self.log("END", "Exiting MetNano")
             sys.exit(1)
 
@@ -335,7 +331,7 @@ class Preprocessing:
 
         # Run assembly-stats
         print(f"# Compute sequencing statistics with assembly-stats", flush=True)
-        self.assembly_stat()
+        self.assembly_stats()
 
         # Run NanoPlot
         print("\n# Quality control with NanoPlot", flush = True)
@@ -382,6 +378,7 @@ class TaxonomicClassification:
             self.minlength = minlength
             self.temp_db_path = os.path.join("/dev/shm", self.db_name)
             self.kraken2_dir = os.path.join(self.out_dir, "06-Kraken2", self.db_name)
+            self.required_files = ["hash.k2d", "opts.k2d", "taxo.k2d"]
 
         def log(self, type, message):
             print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [{type}] {message}", flush=True)
@@ -396,11 +393,10 @@ class TaxonomicClassification:
                 f"{self.db_path}/*  "
                 f"{self.temp_db_path}"
             )
-            required_files = ["hash.k2d", "opts.k2d", "taxo.k2d"]
             subprocess.run(
                 cmd, shell=True, check=True
             )
-            for f in required_files:
+            for f in self.required_files:
                if not os.path.exists(os.path.join(self.temp_db_path, f)):
                    self.log("ERROR", f"Database copy incomplete: missing {f}")
                    self.log("END", "Exiting MetNano")
@@ -415,16 +411,11 @@ class TaxonomicClassification:
             kraken2_output = os.path.join(self.kraken2_dir, f"{prefix}.all")
             kraken2_report = os.path.join(self.kraken2_dir, f"{prefix}.report")
             kraken2_log = os.path.join(self.kraken2_dir, f"{prefix}.log")
-
-            # Check that required files exist
-            required_files = ["hash.k2d", "opts.k2d", "taxo.k2d"]
-            missing_files = [f for f in required_files if not os.path.exists(os.path.join(self.temp_db_path, f))]
+            missing_files = [f for f in self.required_files if not os.path.exists(os.path.join(self.temp_db_path, f))]
             if missing_files:
                 self.log("ERROR", f"Missing required DB files in RAM: {missing_files}")
                 self.log("END", "Exiting MetNano")
                 sys.exit(1)
-
-            # ----- Kraken2 -----
             kraken2_cmd = (
                 f"kraken2 "
                 f"--db {self.temp_db_path} "
@@ -471,8 +462,6 @@ class TaxonomicClassification:
                     self.bracken_dir,
                     f"{prefix}.{level_name}.breport"
                 )
-
-                # Skip if already exists
                 if not os.path.exists(bracken_output) or os.path.getsize(bracken_output) == 0:
                     self.log("INFO", f"Running Bracken at {level_name} level for sample {sample_name}...")
                     bracken_cmd = (
@@ -497,13 +486,12 @@ class TaxonomicClassification:
                     except subprocess.CalledProcessError as e:
                         self.log("ERROR", f"Bracken failed at {level_name} level for sample {sample_name}")
                         exceptions.append(level_name)
-                    print()
                 else:
                     self.log("INFO", f"Bracken {level_name} file already exists for sample {sample_name}")
             if not exceptions:
-                self.log("INFO", "Bracken completed for all taxonomic levels\n")
+                self.log("INFO", f"Bracken completed for sample {sample_name} for all taxonomic levels\n")
             else:
-                self.log("INFO", f"Bracken completed for all taxonomic levels, except for {', '.join(exceptions)} levels\n")
+                self.log("INFO", f"Bracken completed for sample {sample_name} for all taxonomic levels, except for {', '.join(exceptions)} levels\n")
 
         def run_krakenbiom(self):
             # ---------- Generate BIOM tables, one per report ----------
@@ -530,8 +518,8 @@ class TaxonomicClassification:
                     subprocess.run(krakenbiom_cmd, shell=True, check=True)
                 else:
                     self.log("INFO", f"BIOM for {sample_name} already exists")
-                print()
 
+            print()
             self.log("INFO", f"BIOM tables generated\n")
 
         def run_all(self, max_workers=1):
@@ -543,15 +531,13 @@ class TaxonomicClassification:
                     return
                 files_to_run = []
                 for f in fastq_files:
-                    sample_name = os.path.splitext(os.path.basename(f))[0]
-                    sample_name = re.sub(r"_sliding(_[0-9.]+)?", "", sample_name, flags=re.IGNORECASE)
+                    sample_name = os.path.basename(f).replace("_segmented.fastq", "")
                     expected_report = os.path.join(self.kraken2_dir, f"{sample_name}_{self.confidence}.report")
                     if not os.path.exists(expected_report) or os.path.getsize(expected_report) == 0:
                         files_to_run.append(f)
 
                 # Only load RAM if needed
                 if files_to_run:
-                    self.log("INFO", f"{len(files_to_run)} samples need processing\n")
                     self.copy_db_to_ramdisk()
 
                     # Run Kraken2
@@ -566,6 +552,7 @@ class TaxonomicClassification:
                             sys.exit(1)
                     self.log("END", f"Kraken2 ended\n")
                 else:
+                    print("# Read taxonomic classification with Kraken2", flush = True)
                     self.log("INFO", "Kraken2 output files already exist")
                     self.log("INFO", "Not loading DB into memory")
                     self.log("INFO", "Skipping Kraken2\n")

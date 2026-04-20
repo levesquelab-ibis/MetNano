@@ -9,7 +9,7 @@ from class_module_container_MetNano import *
 parser = argparse.ArgumentParser(description="Process some parameters.")
 
 # Positional arguments (required)
-parser.add_argument("-n", "--folder_nanopore", help="Path to the nanopore folder.")
+parser.add_argument("-n", "--ont_folder", help="Path to the ONT folder.")
 parser.add_argument("-L", "--association_file", help="association file.")
 parser.add_argument("-d", "--database", help="quality seq.")
 
@@ -26,7 +26,7 @@ parser.add_argument("-t", "--threads", help="number of threads.")
 args = parser.parse_args()
 
 # Access the arguments
-folder_nanopore = args.folder_nanopore
+ont_folder = args.ont_folder
 association_file = args.association_file
 minlength = args.minlength
 qualityscore = args.qualityscore
@@ -43,7 +43,7 @@ database_name= os.path.basename(os.path.normpath(database))
 print("# Starting MetNano with the following parameters:", flush=True)
 
 # For debugging, you can print all the variables to verify
-print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] ONT folder: {folder_nanopore}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] ONT folder: {ont_folder}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Association file: {association_file}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Read minimum length: {minlength}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Read minimum quality: {qualityscore}")
@@ -51,14 +51,13 @@ print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Reference
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Kraken2 confidence score: {confidence}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Kraken2 database: {database}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Unzip FASTQs: {unzip}")
-print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Number of threads: {threads}")
-
 total_cpus = os.process_cpu_count()
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Number of CPUs: {total_cpus}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Number of threads: {threads}")
 
 # Run Demultiplexing and QC pipeline
 preprocessed = Preprocessing(
-    folder_nanopore,
+    ont_folder,
     threads,
     association_file,
     mapping,
