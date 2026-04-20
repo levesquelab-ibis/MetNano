@@ -326,9 +326,8 @@ class Preprocessing:
             sys.exit(1)
 
         # Calculate optimal number of threads per task
-        total_cpus = os.process_cpu_count()
-        self.max_workers = min(len(fastqs), total_cpus)
-        self.threads_per_task = max(1, total_cpus // self.max_workers)
+        self.max_workers = min(len(fastqs), self.threads)
+        self.threads_per_task = max(1, self.threads // self.max_workers)
         self.log("INFO", f"Threads per parallel task = {self.threads_per_task}\n")
 
         # Run assembly-stats
