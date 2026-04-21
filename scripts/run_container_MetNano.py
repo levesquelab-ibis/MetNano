@@ -1,8 +1,6 @@
 import os
-import sys
 import argparse
 from datetime import datetime
-from parameter_MetNano import *
 from class_module_container_MetNano import *
 
 # Create the parser
@@ -75,6 +73,7 @@ preprocessed.run_all()
 classified = TaxonomicClassification(
     database,
     preprocessed.seqkit_dir,
+    preprocessed.parameters,
     threads,
     confidence,
     minlength,
