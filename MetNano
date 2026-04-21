@@ -46,73 +46,88 @@ Guillaume Nguyen, Jeff Gauthier and Anthony Piot (Levesque Lab)
 
 # Function to display usage information
 usage() {
-    echo -e "$USAGE"
-    exit 1
+  echo -e "$USAGE"
+  exit 1
 }
 
 # Parse arguments using getopts
 while getopts "o:f:q:l:d:c:m:a:t:n:ruh" opt; do
-    case $opt in
-        a) list="$OPTARG" ;;
-        o) output_dir="$OPTARG" ;;
-        f) FASTQ_dir="$OPTARG" ;;
-        q) qualityscore="$OPTARG" ;;
-        l) minlength="$OPTARG" ;;
-        d) database="$OPTARG" ;;
-        c) confidence="$OPTARG" ;;
-        m) mapping="$OPTARG" ;;
-        n) memory_mapping="$OPTARG" ;;
-        r) rename="True" ;;
-        u) unzip="True" ;;
-        t) threads="$OPTARG" ;;
-        h) usage ;;
-        *) usage ;;
-    esac
+  case $opt in
+    a) list="$OPTARG" ;;
+    o) output_dir="$OPTARG" ;;
+    f) FASTQ_dir="$OPTARG" ;;
+    q) qualityscore="$OPTARG" ;;
+    l) minlength="$OPTARG" ;;
+    d) database="$OPTARG" ;;
+    c) confidence="$OPTARG" ;;
+    m) mapping="$OPTARG" ;;
+    n) memory_mapping="$OPTARG" ;;
+    r) rename="True" ;;
+    u) unzip="True" ;;
+    t) threads="$OPTARG" ;;
+    h) usage ;;
+    *) usage ;;
+  esac
 done
 
 # Ensure mandatory parameters are provided
-if [ -z "$FASTQ_dir" ] || [ -z "$output_dir" ] || [ -z "$database" ]; then
-        echo ""
+if [[ -z "$FASTQ_dir" || -z "$output_dir" || -z "$database" ]]
+  then
     echo "Error: Missing required arguments. Check FASTQ directory (-f), output_dir (-o), and kraken2 database (-d)"
-        usage
-        exit 1
+    usage
+    exit 1
+fi
+
+if [[ $rename == "True" && -z $list ]]
+  then
+    echo "Error: Association file (-a) is required if -r is used"
+    usage
+    exit 1
 fi
 
 # Optional
-if [ -z "$mapping" ]; then
-        mapping="None"
+if [[ -z "$mapping" ]]
+  then
+    mapping="None"
 fi
 
-if [ -z "$qualityscore" ]; then
-        qualityscore=15
+if [[ -z "$qualityscore" ]]
+  then
+    qualityscore=15
 fi
 
-if [ -z "$minlength" ]; then
-        minlength=300
+if [[ -z "$minlength" ]]
+  then
+    minlength=300
 fi
 
-if [ -z "$confidence" ]; then
-        confidence=0.1
+if [[ -z "$confidence" ]]
+  then
+    confidence=0.1
 fi
 
-if [ -z "$rename" ]; then
-        rename="False"
-      else
-        rename="True"
+if [[ -z "$rename" ]]
+  then
+    rename="False"
+  else
+    rename="True"
 fi
 
-if [ -z "$unzip" ]; then
-        unzip="False"
-      else
-        unzip="True"
+if [[ -z "$unzip" ]]
+  then
+    unzip="False"
+  else
+    unzip="True"
 fi
 
-if [ -z "$memory_mapping" ]; then
-        memory_mapping="False"
+if [[ -z "$memory_mapping" ]]
+  then
+    memory_mapping="False"
 fi
 
-if [ -z "$threads" ]; then
-        threads=2
+if [[ -z "$threads" ]]
+  then
+    threads=2
 fi
 
 # Create output directory if needed
@@ -126,14 +141,15 @@ DIR=$(dirname $(realpath $0))
 
 # Lauch MetNano pipeline
 python3 $DIR/scripts/run_container_MetNano.py \
-    -f $FASTQ_dir \
-    -r $rename \
-    -a $list \
-    -l $minlength \
-    -q $qualityscore \
-    -c $confidence \
-    -d $database \
-    -m $mapping \
-    -u $unzip \
-    -t $threads \
-    -n $memory_mapping
+  -f $FASTQ_dir \
+  -r $rename \
+  -a $list \
+  -l $minlength \
+  -q $qualityscore \
+  -c $confidence \
+  -d $database \
+  -m $mapping \
+  -u $unzip \
+  -t $threads \
+  -n $memory_mapping \
+  -o $output_dir

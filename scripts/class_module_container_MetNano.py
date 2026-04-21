@@ -76,7 +76,7 @@ class Preprocessing:
             self.log("INFO", "Symbolic link already exists")
 
     def rename_fastq(self):
-        """Rename file with metadata provided"""
+        """Rename file with provided association file"""
         barcode_fastqs = glob.glob(os.path.join(self.output_folder_fastq, "*barcode*.fastq*"))
         fastqs = glob.glob(os.path.join(self.output_folder_fastq, "*.fastq"))
         if barcode_fastqs:

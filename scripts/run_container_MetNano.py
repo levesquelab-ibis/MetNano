@@ -9,6 +9,7 @@ parser = argparse.ArgumentParser(description="Process some parameters.")
 # Positional arguments (required)
 parser.add_argument("-f", "--FASTQ_dir", help="Path to the ONT folder.")
 parser.add_argument("-d", "--database", help="quality seq.")
+parser.add_argument("-o", "--output_dir", help="Output directory.")
 
 # Optional arguments with default values
 parser.add_argument("-l", "--minlength", help="minlength seq.")
@@ -26,6 +27,7 @@ args = parser.parse_args()
 
 # Access the arguments
 FASTQ_dir = args.FASTQ_dir
+output_dir = args.output_dir
 association_file = args.association_file
 minlength = args.minlength
 qualityscore = args.qualityscore
@@ -45,6 +47,7 @@ print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] FASTQ fol
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Unzip FASTQs: {unzip}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Rename FASTQs: {rename}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Association file: {association_file}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Output directory: {output_dir}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Read minimum length: {minlength}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Read minimum quality: {qualityscore}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Reference genome: {mapping}")
