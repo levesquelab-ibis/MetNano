@@ -140,7 +140,7 @@ cd $output_dir
 DIR=$(dirname $(realpath $0))
 
 # Lauch MetNano pipeline
-python3 $DIR/scripts/run_container_MetNano.py \
+python3 $DIR/src/run_container_metnano.py \
   -f $FASTQ_dir \
   -r $rename \
   -a $list \

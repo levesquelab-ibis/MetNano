@@ -1,7 +1,7 @@
 import os
 import argparse
 from datetime import datetime
-from class_module_container_MetNano import *
+from class_module_container_metnano import *
 
 # Create the parser
 parser = argparse.ArgumentParser(description="Process some parameters.")

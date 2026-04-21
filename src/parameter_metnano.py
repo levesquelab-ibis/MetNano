@@ -6,7 +6,7 @@ import os
 import sys
 
 ## Utilities folder localisation
-directory = sys.argv[0].replace("/run_container_MetNano.py", "")
+directory = sys.argv[0].replace("/run_container_metnano.py", "")
 utilities_f = f"{directory}/utilities/"
 
 ## Unzip and demultiplex

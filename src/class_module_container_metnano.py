@@ -4,7 +4,7 @@ import glob
 import subprocess
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from parameter_MetNano import *
+from parameter_metnano import *
 
 class Preprocessing:
     """
