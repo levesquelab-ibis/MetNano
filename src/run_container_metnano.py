@@ -55,8 +55,8 @@ print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Kraken2 c
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Kraken2 database: {database}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Kraken2 memory mapping: {memory_mapping}")
 total_cpus = os.process_cpu_count()
-print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Number of CPUs: {total_cpus}")
-print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Number of threads: {threads}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Number of available CPUs: {total_cpus}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Number of specified threads: {threads}")
 
 # Run Demultiplexing and QC pipeline
 preprocessed = Preprocessing(

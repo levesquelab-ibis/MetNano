@@ -32,5 +32,5 @@ mkdir $(basename $FASTQ_PATH)_unzipped
 # UNZIP FILES
 for BARCODE in $FASTQ_PATH/*/*/fastq_pass/barcode*; do
 	NAME=$(basename $BARCODE)
-	srun --time 4:00:00 -c $CPUS pigz -d -p $CPUS -cv $BARCODE/*.fastq.gz >> $(basename $FASTQ_PATH)_unzipped/$NAME.fastq
+	srun --time 4:00:00 -c $CPUS pigz -d -p $CPUS -c $BARCODE/*.fastq.gz >> $(basename $FASTQ_PATH)_unzipped/$NAME.fastq
 done

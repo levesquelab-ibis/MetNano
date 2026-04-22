@@ -46,20 +46,19 @@ class Preprocessing:
                 future.result()  # crash fast, loud, and clear
 
     def unzip_fastq(self):
-        """Unzip and demultiplex barcoded samples"""
-        if not os.path.exists(self.output_folder_fastq) and not os.listdir(self.output_folder_fastq):
-            self.log("INFO", "Folder unzip {self.output_folder_fastq} is missing, running {unzip_barcode_script}")
-            self.log("INFO", "Running unzip_barcode_script ...")
+        """Unzip and concatenate archived FASTQ files"""
+        if not os.path.exists(self.output_folder_fastq) or not os.listdir(self.output_folder_fastq):
+            os.makedirs(self.output_folder_fastq, exist_ok=True)
+            self.log("INFO", "Unzipping FASTQ files...")
             unzip_cmd = f"{unzip_barcode_script} {self.ont_folder_path} {self.threads}"
             self.log("RUN", f"{unzip_cmd}")
             subprocess.run(unzip_cmd, shell=True, check=True)
             self.log("INFO", "Unzip and demultiplexing done")
-            os.makedirs(self.output_folder_fastq, exist_ok=True)
             mv_cmd = f"mv {self.output_folder_fastq}/../*_unzipped/*.fastq {self.output_folder_fastq}"
             subprocess.run(mv_cmd, shell=True, check=True)
             rm_cmd = f"rmdir {self.output_folder_fastq}/../*_unzipped/"
             subprocess.run(rm_cmd, shell=True, check=True)
-            self.log("INFO", f"Moved file to {self.output_folder_fastq}")
+            self.log("INFO", f"FASTQ files are in {self.output_folder_fastq}")
         else:
             self.log("INFO", "FASTQ folder exists, skipping unzipping")
 
