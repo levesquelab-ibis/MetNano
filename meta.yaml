@@ -29,7 +29,7 @@ requirements:
 
 test:
   commands:
-    - metnano -h
+    - MetNano -h
 
 about:
   home: https://github.com/levesquelab-ibis/MetNano
