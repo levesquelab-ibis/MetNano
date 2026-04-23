@@ -13,6 +13,12 @@
 MetNano runs a metagenomic analysis pipeline using provided FASTQ files from Nanopore sequencing.
 It is the first step to process the raw basecall data compiled in one file fastQ folder
 
+# Pipeline
+`MetNano` consists of a pipeline made of multiple bioinformatics software from read quality control to taxonomic abundance visualization.
+
+<img width="2244" height="1535" alt="Figure 1 - Flowchart" src="https://github.com/user-attachments/assets/07a08090-15c2-4a17-827a-6ca62278f2df" />
+
+
 # Installation:
 MetNano and all of its dependencies are available on bioconda. You can create and use a MetNano conda environment with the following commands:
 ```
