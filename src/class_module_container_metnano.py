@@ -115,7 +115,7 @@ class Preprocessing:
 
         def NanoPlot_single(fq):
             sample = os.path.basename(fq).replace(".fastq", "")
-            nanoplot_out = os.path.join(nanoplot_dir, f"NanoPlot_{sample}")
+            nanoplot_out = os.path.join(nanoplot_dir, f"{sample}")
             nanoplot_html = os.path.join(nanoplot_out, f"{sample}_NanoPlot-report.html")
             nanoplot_log = os.path.join(nanoplot_out, f"{sample}.log")
             os.makedirs(nanoplot_out, exist_ok=True)
@@ -150,7 +150,7 @@ class Preprocessing:
 
         def nanoQC_single(fq):
             sample = os.path.basename(fq).replace(".fastq", "")
-            nanoQC_out = os.path.join(nanoQC_dir, f"nanoQC_{sample}")
+            nanoQC_out = os.path.join(nanoQC_dir, f"{sample}")
             nanoQC_html = os.path.join(nanoQC_out, "nanoQC.html")
             os.makedirs(nanoQC_out, exist_ok=True)
             if not os.path.isfile(nanoQC_html) or os.path.getsize(nanoQC_html) == 0:
@@ -372,10 +372,10 @@ class TaxonomicClassification:
         self.minlength = minlength
         self.memory_mapping = memory_mapping
         self.temp_db_path = os.path.join(memory_mapping, self.db_name)
-        self.kraken2_dir = os.path.join(self.out_dir, "06-Kraken2", self.parameters, self.db_name)
+        self.kraken2_dir = os.path.join(self.out_dir, "06-Kraken2", self.parameters, self.db_name, self.confidence)
         self.required_files = ["hash.k2d", "opts.k2d", "taxo.k2d"]
-        self.bracken_dir = os.path.join(self.out_dir, "07-Bracken", self.parameters, self.db_name)
-        self.krakenbiom_dir = os.path.join(self.out_dir, "08-kraken-biom", self.parameters, self.db_name)
+        self.bracken_dir = os.path.join(self.out_dir, "07-Bracken", self.parameters, self.db_name, self.confidence)
+        self.krakenbiom_dir = os.path.join(self.out_dir, "08-kraken-biom", self.parameters, self.db_name, self.confidence)
 
     def log(self, kind, message):
         """Print formatted log message"""
@@ -405,10 +405,9 @@ class TaxonomicClassification:
         """Assign taxonomic classification to reads with Kraken2"""
         os.makedirs(self.kraken2_dir, exist_ok=True)
         sample_name = os.path.basename(fastq_file).replace("_segmented.fastq", "")
-        prefix = f"{sample_name}_{self.confidence}"
-        kraken2_output = os.path.join(self.kraken2_dir, f"{prefix}.all")
-        kraken2_report = os.path.join(self.kraken2_dir, f"{prefix}.report")
-        kraken2_log = os.path.join(self.kraken2_dir, f"{prefix}.log")
+        kraken2_output = os.path.join(self.kraken2_dir, f"{sample_name}.all")
+        kraken2_report = os.path.join(self.kraken2_dir, f"{sample_name}.report")
+        kraken2_log = os.path.join(self.kraken2_dir, f"{sample_name}.log")
         if self.memory_mapping != "False":
             missing_files = [f for f in self.required_files if not os.path.exists(os.path.join(self.temp_db_path, f))]
             if missing_files:
@@ -440,7 +439,7 @@ class TaxonomicClassification:
                 f"--confidence {self.confidence} "
                 f"{fastq_file}"
             )
-        self.log("INFO", f"Running Kraken2 for {prefix}")
+        self.log("INFO", f"Running Kraken2 for {sample_name}")
         with open(kraken2_log, "a") as log:
             subprocess.run(
                 kraken2_cmd,
@@ -454,9 +453,8 @@ class TaxonomicClassification:
         """Estimate relative abundance of all taxonomic levels with Bracken"""
         os.makedirs(self.bracken_dir, exist_ok=True)
         sample_name = os.path.basename(fastq_file).replace("_segmented.fastq", "")
-        prefix = f"{sample_name}_{self.confidence}"
-        kraken2_report = os.path.join(self.kraken2_dir, f"{prefix}.report")
-        bracken_log = os.path.join(self.bracken_dir, f"{prefix}.log")
+        kraken2_report = os.path.join(self.kraken2_dir, f"{sample_name}.report")
+        bracken_log = os.path.join(self.bracken_dir, f"{sample_name}.log")
         BRACKEN_LEVELS = {
             "species": "S",
             "genus": "G",
@@ -469,11 +467,11 @@ class TaxonomicClassification:
         for level_name, level_code in BRACKEN_LEVELS.items():
             bracken_output = os.path.join(
                 self.bracken_dir,
-                f"{prefix}.{level_name}.bracken"
+                f"{sample_name}.{level_name}.bracken"
             )
             bracken_report = os.path.join(
                 self.bracken_dir,
-                f"{prefix}.{level_name}.breport"
+                f"{sample_name}.{level_name}.breport"
             )
             if not os.path.exists(bracken_output) or os.path.getsize(bracken_output) == 0:
                 self.log("INFO", f"Running Bracken at {level_name} level for sample {sample_name}...")

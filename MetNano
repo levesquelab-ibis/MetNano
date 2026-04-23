@@ -37,9 +37,6 @@ OPTIONAL ARGUMENTS:
 ADDITIONAL OPTIONS:
 -h                	: Display this help message and exit
 
-EXAMPLE:
-./MetNano -L metadata.txt -o output_dir -n /path/to/nanopore/ -d /path/to/kraken2/database/
-
 AUTHORS:
 Guillaume Nguyen, Jeff Gauthier and Anthony Piot (Levesque Lab)
 '
