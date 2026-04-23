@@ -1,0 +1,44 @@
+package:
+  name: metnano
+  version: "0.1.0"
+
+source:
+  url: https://github.com/levesquelab-ibis/MetNano/archive/refs/tags/v0.1.0.tar.gz
+  sha256: REPLACE_WITH_SHA256
+
+build:
+  number: 0
+  script: bash build.sh
+
+requirements:
+  host:
+    - python >=3.13     #os.process_cpu_count() available from v3.13 onward
+
+  run:
+    - python >=3.13
+    - pigz
+    - assembly-stats
+    - nanoplot
+    - nanoqc
+    - chopper
+    - minimap2
+    - seqkit
+    - kraken2
+    - bracken =3.1.1
+    - kraken-biom
+
+test:
+  commands:
+    - metnano -h
+
+about:
+  home: https://github.com/levesquelab-ibis/MetNano
+  license:
+  summary:
+  description:
+
+extra:
+  recipe-maintainers:
+    - anthonypiot91
+    - jeffgauthier
+    - guillaumeQnguyen
