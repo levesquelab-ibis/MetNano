@@ -455,23 +455,25 @@ class TaxonomicClassification:
         sample_name = os.path.basename(fastq_file).replace("_segmented.fastq", "")
         kraken2_report = os.path.join(self.kraken2_dir, f"{sample_name}.report")
         bracken_log = os.path.join(self.bracken_dir, f"{sample_name}.log")
-        BRACKEN_LEVELS = {
-            "species": "S",
-            "genus": "G",
-            "family": "F",
-            "order": "O",
-            "class": "C",
-            "phylum": "P"
+        self.BRACKEN_LEVELS = {
+            "Species": "S",
+            "Genus": "G",
+            "Gamily": "F",
+            "Order": "O",
+            "Class": "C",
+            "Phylum": "P"
         }
         exceptions = []
-        for level_name, level_code in BRACKEN_LEVELS.items():
+        for level_name, level_code in self.BRACKEN_LEVELS.items():
+            bracken_dir_taxrank = os.path.join(self.bracken_dir, level_name)
+            os.makedirs(bracken_dir_taxrank, exist_ok = True)
             bracken_output = os.path.join(
-                self.bracken_dir,
-                f"{sample_name}.{level_name}.bracken"
+                bracken_dir_taxrank,
+                f"{sample_name}.bracken"
             )
             bracken_report = os.path.join(
-                self.bracken_dir,
-                f"{sample_name}.{level_name}.breport"
+                bracken_dir_taxrank,
+                f"{sample_name}.breport"
             )
             if not os.path.exists(bracken_output) or os.path.getsize(bracken_output) == 0:
                 self.log("INFO", f"Running Bracken at {level_name} level for sample {sample_name}...")
@@ -504,33 +506,44 @@ class TaxonomicClassification:
         else:
             self.log("INFO", f"Bracken completed for sample {sample_name} for all taxonomic levels, except for {', '.join(exceptions)} levels\n")
 
-    def krakenbiom(self):
+    def krakenbiom(self, fastq_file):
         """Generate BIOM tables, one per report"""
         os.makedirs(self.krakenbiom_dir, exist_ok=True)
-        report_files = glob.glob(os.path.join(self.bracken_dir, "*.breport"))
-        bracken_reports = report_files
-        if not bracken_reports:
-            self.log("ERROR", "No Bracken reports found. Cannot generate BIOM tables")
-            self.log("END", "Exiting MetNano")
-            sys.exit(1)
-        for report in bracken_reports:
-            sample_name = os.path.splitext(os.path.basename(report))[0]
-            output_file = os.path.join(self.krakenbiom_dir, f"{sample_name}.biom")
-            if not os.path.exists(output_file) or os.path.getsize(output_file) == 0:
-                self.log("INFO", f"Generating BIOM from Kraken2-style reports for {sample_name}...")
+        sample_name = os.path.basename(fastq_file).replace("_segmented.fastq", "")
+        self.log("INFO", f"Generating BIOM from Kraken2-style reports for {sample_name}...")
+        exceptions = []
+        for level_name, level_code in self.BRACKEN_LEVELS.items():
+            bracken_dir_taxrank = os.path.join(self.bracken_dir, level_name)
+            krakenbiom_dir_taxrank = os.path.join(self.krakenbiom_dir, level_name)
+            os.makedirs(krakenbiom_dir_taxrank, exist_ok = True)
+            bracken_report = os.path.join(
+                bracken_dir_taxrank,
+                f"{sample_name}.breport"
+            )
+            krakenbiom_table = os.path.join(
+                krakenbiom_dir_taxrank,
+                f"{sample_name}.biom"
+            )
+            if not os.path.exists(krakenbiom_table) or os.path.getsize(krakenbiom_table) == 0:
+                self.log("INFO", f"Running Bracken at {level_name} level for sample {sample_name}...")
                 krakenbiom_cmd = (
-                    f"kraken-biom {report} "
+                    f"kraken-biom {bracken_report} "
                     f"--fmt json "
-                    f"--output_fp {output_file} "
+                    f"--output_fp {krakenbiom_table} "
                     f"--max D --min S"
                 )
                 self.log("RUN", krakenbiom_cmd)
-                subprocess.run(krakenbiom_cmd, shell=True, check=True)
+                try:
+                    subprocess.run(krakenbiom_cmd, shell=True, check=True)
+                except subprocess.CalledProcessError:
+                    self.log("ERROR", f"kraken-biom failed at {level_name} level for sample {sample_name}")
+                    exceptions.append(level_name)
             else:
                 self.log("INFO", f"BIOM for {sample_name} already exists")
-
-        print()
-        self.log("INFO", "BIOM tables generated\n")
+        if not exceptions:
+            self.log("INFO", f"kraken-biom completed for sample {sample_name} for all taxonomic levels\n")
+        else:
+            self.log("INFO", f"kraken-biom completed for sample {sample_name} for all taxonomic levels, except for {', '.join(exceptions)} levels\n")
 
     def run_all(self):
         fastq_files = glob.glob(os.path.join(self.fastq_dir, "*.fastq*"))
@@ -541,7 +554,7 @@ class TaxonomicClassification:
         files_to_run = []
         for f in fastq_files:
             sample_name = os.path.basename(f).replace("_segmented.fastq", "")
-            expected_report = os.path.join(self.kraken2_dir, f"{sample_name}_{self.confidence}.report")
+            expected_report = os.path.join(self.kraken2_dir, f"{sample_name}.report")
             if not os.path.exists(expected_report) or os.path.getsize(expected_report) == 0:
                 files_to_run.append(f)
 
@@ -581,12 +594,13 @@ class TaxonomicClassification:
 
         # Run kraken-biom
         print("# Converting Kraken2-style reports to BIOM format with kraken-biom", flush = True)
-        try:
-            self.krakenbiom()
-        except subprocess.CalledProcessError as e:
-            self.log("ERROR", "ERROR running kraken-biom")
-            self.log("ERROR", f"{e}")
-            self.log("END", "Exiting MetNano")
-            sys.exit(1)
+        for f in fastq_files:
+            try:
+                self.krakenbiom(f)
+            except subprocess.CalledProcessError as e:
+                self.log("ERROR", f"ERROR processing {f}")
+                self.log("ERROR", f"{e}")
+                self.log("END", "Exiting MetNano")
+                sys.exit(1)
 
         self.log("END", "MetNano is now complete. Bye!")
