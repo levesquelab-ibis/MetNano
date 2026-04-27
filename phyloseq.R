@@ -7,10 +7,11 @@
 library(dplyr)
 library(ggplot2)
 library(phyloseq)
+library(RColorBrewer)
 
 ####################### Parameters used to run MetNano #########################
 # Run name
-run = "example_run"
+run = "example_data"
 
 # Read mininum length
 min_len = 300
@@ -25,16 +26,23 @@ database = "k2_core_nt_20251015"
 confidence = 0.1
 
 filter_tag = sprintf("min_%sbp_%sQ", min_len, min_qual)
+path_to_biom = file.path(
+  run, 
+  "08-kraken-biom", 
+  filter_tag, 
+  database, 
+  confidence
+)
 
-############################# Formatting function ##############################
+####################### Formatting BIOM tables function ########################
 format_tax_level = function(tax_rank) {
-  taxonomic_level = substr(tax_rank, start = 1, stop = 1)
+  #taxonomic_level = substr(tax_rank, start = 1, stop = 1)
   path = file.path(
-    run, filter_tag, database, confidence, taxonomic_level
+     path_to_biom, tax_rank
   )
 
   # Retrieve list of biom tables for the specified taxonomic level
-  biom_tables = list.files(path)
+  bioms = list.files(path)
 
   # Import biom tables into a single phyloseq object ---------------------------
   for (i in 1:length(bioms)){
@@ -69,6 +77,8 @@ format_tax_level = function(tax_rank) {
   ## Filter data ---------------------------------------------------------------
   # Remove unwanted taxa
   metagenome = subset_taxa(metagenome, Phylum != "Chordata")
+  metagenome = subset_taxa(metagenome, Phylum != "Arthropoda")
+  metagenome = subset_taxa(metagenome, Phylum != "Pseudomonadota")
   
   taxa_tab = as(tax_table(metagenome), "matrix")
   keep = taxa_tab[, tax_rank] != ""
@@ -97,22 +107,15 @@ df_G = format_tax_level("Genus")
 
 df_S = format_tax_level("Species")
 
-########################## General plotting function ###########################
-plot_tax_level = function(ps_obj,
+####################### Plot relative abundance function #######################
+plot_tax_level = function(df,
                           tax_rank,
                           low_abundance_threshold,
                           output_name) {
-  taxa_tab <- as(tax_table(ps_obj), "matrix")
-  keep <- taxa_tab[, tax_rank] != ""
-  ps_filt <- prune_taxa(keep, ps_obj)
-  ps_percent <- transform_sample_counts(
-    ps_filt,
-    function(x) 100 * x / sum(x)
-  )
-  ps_glom = tax_glom(ps_percent, taxrank = tax_rank)
-  df = psmelt(ps_glom)
-  df$Run = run
-
+  
+  if (tax_rank == "Species"){
+    df$Species = paste(df$Genus, df$Species)
+  }
   # Group low abundance taxa ---------------------------------------------------
   df[[tax_rank]] = as.character(df[[tax_rank]])
   df[[tax_rank]][df$Abundance < low_abundance_threshold] =
@@ -133,23 +136,19 @@ plot_tax_level = function(ps_obj,
     facet_wrap(~Run, scales = "free_x") +
     scale_fill_manual(values = colors) +
     theme_bw() +
-    theme(
-      axis.text.x = element_text(angle = 90, vjust = 0.5),
-      plot.title = element_text(size = 10, hjust = 0.5)
-    ) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
     labs(x = "Samples",
          y = "Relative abundance (%)",
-         fill = tax_rank,
-         title = plot_title)
+         fill = tax_rank)
   
   # Save plot ------------------------------------------------------------------
-  ggsave(
-    filename = file.path("results", run, output_name),
-    plot = p,
-    width = 12,
-    height = 6,
-    dpi = 300
-  )
+  # ggsave(
+  #   filename = file.path("results", run, output_name),
+  #   plot = p,
+  #   width = 12,
+  #   height = 6,
+  #   dpi = 300
+  # )
   
   return(p)
 }

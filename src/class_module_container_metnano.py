@@ -458,7 +458,7 @@ class TaxonomicClassification:
         self.BRACKEN_LEVELS = {
             "Species": "S",
             "Genus": "G",
-            "Gamily": "F",
+            "Family": "F",
             "Order": "O",
             "Class": "C",
             "Phylum": "P"
