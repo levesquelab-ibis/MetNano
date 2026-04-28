@@ -65,14 +65,14 @@ class Preprocessing:
     def create_ln_file(self) :
         """Create symbolic link toward raw FASTQs"""
         if not os.path.exists(self.output_folder_fastq) or not os.listdir(self.output_folder_fastq):
-            self.log("INFO", "Linking original file to working directory...")
+            self.log("INFO", "Linking original files to working directory...")
             os.makedirs(self.output_folder_fastq, exist_ok=True)
             ln_cmd= f"ln -s {self.ont_folder_path}/*.fastq* {self.output_folder_fastq}/ "
             self.log("RUN", f"{ln_cmd} ")
             subprocess.run(ln_cmd, shell=True, check=True)
             self.log("INFO", "Symbolic link created into working directory")
         elif os.path.exists(self.output_folder_fastq):
-            self.log("INFO", "Symbolic link already exists")
+            self.log("INFO", "Symbolic links already exist")
 
     def rename_fastq(self):
         """Rename file with provided association file"""
