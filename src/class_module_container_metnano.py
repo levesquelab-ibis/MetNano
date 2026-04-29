@@ -310,10 +310,14 @@ class Preprocessing:
             print("\n# Renaming barcodes", flush=True)
             self.rename_fastq()
 
+        # Change .fq extension to .fastq
+        for fq in glob.glob(os.path.join(self.output_folder_fastq, "*.fq")):
+            base = os.path.splitext(fq)[0]
+            os.rename(os.path.join(self.output_folder_fastq, fq), os.path.join(self.output_folder_fastq, base + ".fastq"))
+
         # Get FASTQ file list for task parallelization
         print("\n# Adding parameters", flush=True)
-        fastqs = glob.glob(os.path.join(self.output_folder_fastq, "*.fastq*")) + \
-                 glob.glob(os.path.join(self.output_folder_fastq, "*.fq"))
+        fastqs = glob.glob(os.path.join(self.output_folder_fastq, "*.fastq"))
         self.log("INFO", f"FASTQ file found: {len(fastqs)}")
         if not fastqs:
             self.log("ERROR", f"No FASTQ files found in {self.output_folder_fastq}")
