@@ -25,7 +25,7 @@ class Preprocessing:
         self.unzip  = unzip
         self.rename = rename
         self.output_folder = os.path.abspath(".")
-        self.output_folder_fastq= os.path.join(self.output_folder, "00-demultiplexed_fastqs")
+        self.output_folder_fastq= os.path.join(self.output_folder, "00-raw_FASTQs")
         self.chopper_dir = os.path.join(self.output_folder, "04-chopper", self.parameters)
         self.minimap2_dir = os.path.join(self.output_folder, "04b-minimap2", self.parameters)
         self.seqkit_dir = os.path.join(self.output_folder, "05-SeqKit", self.parameters)
