@@ -20,7 +20,7 @@ class Preprocessing:
         self.minlength = minlength
         self.parameters = f"min_{minlength}bp_{qualityscore}Q"
         self.threads = int(threads)
-        self.mapping = readmap
+        self.ref = readmap
         self.metadata = metadata
         self.unzip  = unzip
         self.rename = rename
@@ -67,7 +67,7 @@ class Preprocessing:
         if not os.path.exists(self.output_folder_fastq) or not os.listdir(self.output_folder_fastq):
             self.log("INFO", "Linking original files to working directory...")
             os.makedirs(self.output_folder_fastq, exist_ok=True)
-            ln_cmd= f"ln -s {self.ont_folder_path}/*.fastq* {self.output_folder_fastq}/ "
+            ln_cmd= f"ln -s {self.ont_folder_path}/*.{{fastq,fq}} {self.output_folder_fastq}/ "
             self.log("RUN", f"{ln_cmd} ")
             subprocess.run(ln_cmd, shell=True, check=True)
             self.log("INFO", "Symbolic link created into working directory")
@@ -212,7 +212,7 @@ class Preprocessing:
                 self.log("INFO", f"Mapping reads from {sample}...")
                 minimap2_cmd = (
                     f"minimap2 -a -x {mapping_preset} -t {self.threads_per_task} "
-                    f"{self.mapping} {trimmed_fastq} "
+                    f"{self.ref} {trimmed_fastq} "
                     f"> {sam_alignment}"
                 )
                 self.log("RUN", f"{minimap2_cmd}")
@@ -243,6 +243,7 @@ class Preprocessing:
                 self.log("INFO", f"Extracting reads from {os.path.basename(unmapped_fq)}...")
                 samtools_cmd = (
                     f"samtools view -bf 4 "
+                    f"-T {self.ref} "
                     f"-@ {self.threads_per_task} "
                     f"{sam_alignment} "
                     f"> {unmapped_bam} && "
@@ -272,7 +273,7 @@ class Preprocessing:
 
         def SeqKit_single(fq):
             sample = os.path.basename(fq).replace(".fastq.gz", "").replace(".fastq", "")
-            if self.mapping in [None, "None"]:
+            if self.ref in [None, "None"]:
                 input_fq = os.path.join(self.chopper_dir,sample + "_trimmed.fastq")
             else:
                 input_fq = os.path.join(self.minimap2_dir, sample + "_unmapped.fastq")
@@ -301,7 +302,7 @@ class Preprocessing:
             print("\n# Unzip FASTQ files", flush = True)
             self.unzip_fastq()
         else:
-            print("\n# Demultiplexing", flush=True)
+            print("\n# Creating link to FASTQs", flush=True)
             self.create_ln_file()
 
         # Rename FASTQ files
@@ -311,7 +312,8 @@ class Preprocessing:
 
         # Get FASTQ file list for task parallelization
         print("\n# Adding parameters", flush=True)
-        fastqs = glob.glob(os.path.join(self.output_folder_fastq, "*.fastq*"))
+        fastqs = glob.glob(os.path.join(self.output_folder_fastq, "*.fastq*")) + \
+                 glob.glob(os.path.join(self.output_folder_fastq, "*.fq"))
         self.log("INFO", f"FASTQ file found: {len(fastqs)}")
         if not fastqs:
             self.log("ERROR", f"No FASTQ files found in {self.output_folder_fastq}")
@@ -340,7 +342,7 @@ class Preprocessing:
         self.chopper_parallel(fastqs)
 
         # If a reference genome is specified
-        if hasattr(self, 'mapping') and self.mapping not in [None, "None"]:
+        if hasattr(self, 'ref') and self.ref not in [None, "None"]:
             # Run minimap2
             print("\n# Mapping reads to reference genome with minimap2", flush = True)
             self.minimap2_parallel(fastqs)
