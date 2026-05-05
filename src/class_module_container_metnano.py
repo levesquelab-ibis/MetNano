@@ -67,7 +67,7 @@ class Preprocessing:
         if not os.path.exists(self.output_folder_fastq) or not os.listdir(self.output_folder_fastq):
             self.log("INFO", "Linking original files to working directory...")
             os.makedirs(self.output_folder_fastq, exist_ok=True)
-            ln_cmd= f"ln -s {self.ont_folder_path}/*.{{fastq,fq}} {self.output_folder_fastq}/ "
+            ln_cmd= f"ln -s {self.ont_folder_path}/*.fastq {self.output_folder_fastq}/ "
             self.log("RUN", f"{ln_cmd} ")
             subprocess.run(ln_cmd, shell=True, check=True)
             self.log("INFO", "Symbolic link created into working directory")
