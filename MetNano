@@ -36,9 +36,6 @@ OPTIONAL ARGUMENTS:
 
 ADDITIONAL OPTIONS:
 -h                	: Display this help message and exit
-
-AUTHORS:
-Guillaume Nguyen, Jeff Gauthier and Anthony Piot (Levesque Lab)
 '
 
 # Function to display usage information
