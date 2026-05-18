@@ -47,14 +47,14 @@ usage() {
 # Parse arguments using getopts
 while getopts "o:f:q:l:d:c:m:a:t:n:ruh" opt; do
   case $opt in
-    a) list="$OPTARG" ;;
+    a) association_file="$OPTARG" ;;
     o) output_dir="$OPTARG" ;;
     f) FASTQ_dir="$OPTARG" ;;
     q) qualityscore="$OPTARG" ;;
     l) minlength="$OPTARG" ;;
     d) database="$OPTARG" ;;
     c) confidence="$OPTARG" ;;
-    m) mapping="$OPTARG" ;;
+    m) reference_genome="$OPTARG" ;;
     n) memory_mapping="$OPTARG" ;;
     r) rename="True" ;;
     u) unzip="True" ;;
@@ -72,20 +72,20 @@ if [[ -z $FASTQ_dir || -z $output_dir || -z $database ]]
     exit 1
 fi
 
-if [[ $rename == "True" && -z $list ]]
+# Optional
+if [[ $rename == "True" && -z $association_file ]]
   then
     echo "Error: Association file (-a) is required if -r is used"
     usage
     exit 1
-elif [[ -z $list ]]
+elif [[ -z $association_file ]]
   then
-    list="None"
+    association_file="None"
 fi
 
-# Optional
-if [[ -z $mapping ]]
+if [[ -z $reference_genome ]]
   then
-    mapping="None"
+    reference_genome="None"
 fi
 
 if [[ -z $qualityscore ]]
@@ -106,15 +106,11 @@ fi
 if [[ -z $rename ]]
   then
     rename="False"
-  else
-    rename="True"
 fi
 
 if [[ -z $unzip ]]
   then
     unzip="False"
-  else
-    unzip="True"
 fi
 
 if [[ -z $memory_mapping ]]
@@ -125,6 +121,19 @@ fi
 if [[ -z $threads ]]
   then
     threads=2
+fi
+
+# Retrieve absolute paths for required files and directories
+FASTQ_dir=$(realpath -e $FASTQ_dir)
+database=$(realpath -e $database)
+if [[ $association_file != "None" ]]
+  then
+    association_file=$(realpath -e $association_file)
+fi
+
+if [[ $reference_genome != "None" ]]
+  then
+    reference_genome=$(realpath -e $reference_genome)
 fi
 
 # Create output directory if needed
@@ -140,12 +149,12 @@ DIR=$(dirname $(realpath $0))
 python3 $DIR/src/run_container_metnano.py \
   -f $FASTQ_dir \
   -r $rename \
-  -a $list \
+  -a $association_file \
   -l $minlength \
   -q $qualityscore \
   -c $confidence \
   -d $database \
-  -m $mapping \
+  -m $reference_genome \
   -u $unzip \
   -t $threads \
   -n $memory_mapping \
