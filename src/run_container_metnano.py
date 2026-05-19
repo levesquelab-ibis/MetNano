@@ -23,6 +23,7 @@ parser.add_argument("-a", "--association_file", help="association file.")
 parser.add_argument("-u", "--unzip", help="unzip FASTQs.")
 parser.add_argument("-t", "--threads", help="number of threads.")
 parser.add_argument("-n", "--memory_mapping", help="Folder to copy Kraken2 database for --memory_mapping.")
+parser.add_argument("-s", "--step", help="Step after which MetNano will stop.")
 
 # Parse the arguments
 args = parser.parse_args()
@@ -43,6 +44,7 @@ rename = args.rename
 unzip = args.unzip
 threads = args.threads
 memory_mapping = args.memory_mapping
+step = args.step
 
 print("# Starting MetNano with the following parameters:", flush=True)
 
@@ -52,6 +54,7 @@ print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Unzip FAS
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Rename FASTQs: {rename}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Association file: {association_file}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Output directory: {output_dir}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Step: {step}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Read minimum length: {minlength}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Read minimum quality: {qualityscore}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Read headcrop: {headcrop}")
@@ -75,7 +78,8 @@ preprocessed = Preprocessing(
     unzip,
     rename,
     headcrop,
-    tailcrop
+    tailcrop,
+    step
 )
 
 preprocessed.run_all()

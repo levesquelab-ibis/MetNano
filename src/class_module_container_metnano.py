@@ -13,7 +13,7 @@ class Preprocessing:
     segmentation to homogenous length. Optionnaly, filtered reads can also
     be mapped onto a reference genome to deplete host reads.
     """
-    def __init__(self, ont_folder_path, threads, metadata, readmap, qualityscore, minlength, unzip, rename, headcrop, tailcrop):
+    def __init__(self, ont_folder_path, threads, metadata, readmap, qualityscore, minlength, unzip, rename, headcrop, tailcrop, step):
         self.ont_folder_path = ont_folder_path.rstrip("/")
         self.ont_folder = os.path.basename(self.ont_folder_path.rstrip("/"))
         self.qualityscore = qualityscore
@@ -26,6 +26,7 @@ class Preprocessing:
         self.metadata = metadata
         self.unzip  = unzip
         self.rename = rename
+        self.step = step
         self.output_folder = os.path.abspath(".")
         self.output_folder_fastq= os.path.join(self.output_folder, "00-raw_FASTQs")
         self.chopper_dir = os.path.join(self.output_folder, "04-chopper", self.parameters)
@@ -343,9 +344,21 @@ class Preprocessing:
         print("\n# Quality control with nanoQC", flush = True)
         self.nanoQC_parallel(fastqs)
 
+        # Stop MetNano after Quality Control if step QC parameter set
+        if self.step == "QC":
+            print()
+            self.log("END", "QC done. Exiting MetNano. Bye!")
+            sys.exit(1)
+
         # Run chopper
         print("\n# Read filtering and trimming with chopper", flush=True)
         self.chopper_parallel(fastqs)
+
+        # Stop MetNano after filtering if step filtering parameter set
+        if self.step == "filtering":
+            print()
+            self.log("END", "Filtering done. Exiting MetNano. Bye!")
+            sys.exit(1)
 
         # If a reference genome is specified
         if hasattr(self, 'ref') and self.ref not in [None, "None"]:

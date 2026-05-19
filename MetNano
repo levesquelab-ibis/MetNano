@@ -12,8 +12,7 @@ USAGE='
 -----------------------------------------
 
 DESCRIPTION:
-MetNano runs a metagenomic analysis pipeline using provided FASTQ files from Nanopore sequencing.
-It is the first step to process the raw basecall data compiled in one file fastQ folder
+MetNano runs a metagenomic analysis pipeline from FASTQ files obtained by Oxford Nanopore sequencing.
 
 USAGE:
 ./MetNano -f [FASTQ_directory] -o [output_directory] -d [kraken2_database]
@@ -29,11 +28,12 @@ OPTIONAL ARGUMENTS:
 -a [association_file]  	: Path to the association file containing the barcode IDs and associated sample names (required if -r is provided)
 -q [minQ]      		: Nanopore quality score filtering parameter used for chopper (default  = 15)
 -l [minlength] 		: Nanopore sequence length filtering parameter used for chopper (default  = 300)
--H [headcrop]     : Trim N nucleotides from the start of a read (default: 0)
--T [tailcrop]     : Trim N nucleotides from the end of a read (default: 0)
+-H [headcrop]           : Trim N nucleotides from the start of a read (default: 0)
+-T [tailcrop]           : Trim N nucleotides from the end of a read (default: 0)
 -m [reference genome]	: FASTA file of host reference genome (default = none)
 -c [confidence kraken2] : Confidence score used for Kraken2 (default = 0.1)
 -n [path_to_copy_db]    : Copy kraken2 database into temporay in-memory filesystem for use with --memore-mapping option in Kraken2. Typically use /dev/shm/ if available
+-s [step]               : Set the step after which MetNano will stop. Possible options are: QC (stops after nanoQC), filtering (stops after chopper), and complete (default = complete)
 -t [INT]                : Number of threads (default = 2)
 
 ADDITIONAL OPTIONS:
@@ -47,7 +47,7 @@ usage() {
 }
 
 # Parse arguments using getopts
-while getopts "a:o:f:q:l:H:T:d:c:m:t:n:ruh" opt; do
+while getopts "a:o:f:q:l:H:T:d:c:m:s:t:n:ruh" opt; do
   case $opt in
     a) association_file="$OPTARG" ;;
     o) output_dir="$OPTARG" ;;
@@ -60,9 +60,10 @@ while getopts "a:o:f:q:l:H:T:d:c:m:t:n:ruh" opt; do
     c) confidence="$OPTARG" ;;
     m) reference_genome="$OPTARG" ;;
     n) memory_mapping="$OPTARG" ;;
+    s) step="$OPTARG" ;;
+    t) threads="$OPTARG" ;;
     r) rename="True" ;;
     u) unzip="True" ;;
-    t) threads="$OPTARG" ;;
     h) usage ;;
     *) usage ;;
   esac
@@ -137,6 +138,18 @@ if [[ -z $threads ]]
     threads=2
 fi
 
+if [[ -z $step ]]
+  then
+    step="complete"
+fi
+
+if [[ $step != "QC" && $step != "filtering" && $step != "complete" ]]
+  then
+    echo "-s parameter can only be QC, filtering, or complete"
+    usage
+    exit 1
+fi
+
 # Retrieve absolute paths for required files and directories
 FASTQ_dir=$(realpath -e $FASTQ_dir)
 database=$(realpath -e $database)
@@ -174,4 +187,5 @@ python3 $DIR/src/run_container_metnano.py \
   -u $unzip \
   -t $threads \
   -n $memory_mapping \
-  -o $output_dir
+  -o $output_dir \
+  -s $step
