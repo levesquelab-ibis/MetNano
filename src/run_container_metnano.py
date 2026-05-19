@@ -14,6 +14,8 @@ parser.add_argument("-o", "--output_dir", help="Output directory.")
 # Optional arguments with default values
 parser.add_argument("-l", "--minlength", help="minlength seq.")
 parser.add_argument("-q", "--qualityscore", help="quality seq.")
+parser.add_argument("-H", "--headcrop", help="read head crop")
+parser.add_argument("-T", "--tailcrop", help="read trail crop")
 parser.add_argument("-c", "--confidence", help="kraken2 confidence score.")
 parser.add_argument("-m", "--mapping", help="mapping to ref.")
 parser.add_argument("-r", "--rename", help="rename FASTQs.")
@@ -31,6 +33,8 @@ output_dir = args.output_dir
 association_file = args.association_file
 minlength = args.minlength
 qualityscore = args.qualityscore
+headcrop = args.headcrop
+tailcrop = args.tailcrop
 run_quality = args.association_file
 confidence = args.confidence
 database = args.database
@@ -50,6 +54,8 @@ print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Associati
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Output directory: {output_dir}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Read minimum length: {minlength}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Read minimum quality: {qualityscore}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Read headcrop: {headcrop}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Read tailcrop: {tailcrop}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Reference genome: {mapping}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Kraken2 confidence score: {confidence}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Kraken2 database: {database}")
@@ -67,7 +73,9 @@ preprocessed = Preprocessing(
     qualityscore,
     minlength,
     unzip,
-    rename
+    rename,
+    headcrop,
+    tailcrop
 )
 
 preprocessed.run_all()

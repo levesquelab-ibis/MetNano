@@ -13,12 +13,14 @@ class Preprocessing:
     segmentation to homogenous length. Optionnaly, filtered reads can also
     be mapped onto a reference genome to deplete host reads.
     """
-    def __init__(self, ont_folder_path, threads, metadata, readmap, qualityscore, minlength, unzip, rename):
+    def __init__(self, ont_folder_path, threads, metadata, readmap, qualityscore, minlength, unzip, rename, headcrop, tailcrop):
         self.ont_folder_path = ont_folder_path.rstrip("/")
         self.ont_folder = os.path.basename(self.ont_folder_path.rstrip("/"))
         self.qualityscore = qualityscore
         self.minlength = minlength
-        self.parameters = f"min_{minlength}bp_{qualityscore}Q"
+        self.head_trim = headcrop
+        self.tail_trim = tailcrop
+        self.parameters = f"min_{minlength}bp_{qualityscore}Q_H{headcrop}_T{tailcrop}"
         self.threads = int(threads)
         self.ref = readmap
         self.metadata = metadata
@@ -179,7 +181,7 @@ class Preprocessing:
                 self.log("INFO", f"Trimming file {sample}...")
                 chopper_cmd = (
                     f"cat {fq} | "
-                    f"chopper --headcrop {head_trim} --tailcrop {tail_trim} -t {self.threads_per_task} | "
+                    f"chopper --headcrop {self.head_trim} --tailcrop {self.tail_trim} -t {self.threads_per_task} | "
                     f"chopper -q {self.qualityscore} -l {self.minlength} -t {self.threads_per_task} "
                     f"> {trimmed_fastq}"
                 )

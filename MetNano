@@ -29,6 +29,8 @@ OPTIONAL ARGUMENTS:
 -a [association_file]  	: Path to the association file containing the barcode IDs and associated sample names (required if -r is provided)
 -q [minQ]      		: Nanopore quality score filtering parameter used for chopper (default  = 15)
 -l [minlength] 		: Nanopore sequence length filtering parameter used for chopper (default  = 300)
+-H [headcrop]     : Trim N nucleotides from the start of a read (default: 0)
+-T [tailcrop]     : Trim N nucleotides from the end of a read (default: 0)
 -m [reference genome]	: FASTA file of host reference genome (default = none)
 -c [confidence kraken2] : Confidence score used for Kraken2 (default = 0.1)
 -n [path_to_copy_db]    : Copy kraken2 database into temporay in-memory filesystem for use with --memore-mapping option in Kraken2. Typically use /dev/shm/ if available
@@ -45,13 +47,15 @@ usage() {
 }
 
 # Parse arguments using getopts
-while getopts "o:f:q:l:d:c:m:a:t:n:ruh" opt; do
+while getopts "a:o:f:q:l:H:T:d:c:m:t:n:ruh" opt; do
   case $opt in
     a) association_file="$OPTARG" ;;
     o) output_dir="$OPTARG" ;;
     f) FASTQ_dir="$OPTARG" ;;
     q) qualityscore="$OPTARG" ;;
     l) minlength="$OPTARG" ;;
+    H) headcrop="$OPTARG" ;;
+    T) tailcrop="$OPTARG" ;;
     d) database="$OPTARG" ;;
     c) confidence="$OPTARG" ;;
     m) reference_genome="$OPTARG" ;;
@@ -96,6 +100,16 @@ fi
 if [[ -z $minlength ]]
   then
     minlength=300
+fi
+
+if [[ -z $headcrop ]]
+  then
+    headcrop=0
+fi
+
+if [[ -z $tailcrop ]]
+  then
+    tailcrop=0
 fi
 
 if [[ -z $confidence ]]
@@ -152,6 +166,8 @@ python3 $DIR/src/run_container_metnano.py \
   -a $association_file \
   -l $minlength \
   -q $qualityscore \
+  -H $headcrop \
+  -T $tailcrop \
   -c $confidence \
   -d $database \
   -m $reference_genome \
