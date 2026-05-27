@@ -563,7 +563,7 @@ class TaxonomicClassification:
                 self.log("INFO", f"BIOM for {sample_name} already exists")
         if not exceptions:
             self.log("INFO", f"kraken-biom completed for sample {sample_name} at all taxonomic levels\n")
-        elif length(exceptions) == 6:
+        elif len(exceptions) == 6:
             self.log("ERROR", f"kraken-biom failed for sample {sample_name} at all taxonomic levels\n")
         else:
             self.log("INFO", f"kraken-biom completed for sample {sample_name} at all taxonomic levels, except for {', '.join(exceptions)} levels\n")
