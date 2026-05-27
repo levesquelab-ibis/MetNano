@@ -562,9 +562,11 @@ class TaxonomicClassification:
             else:
                 self.log("INFO", f"BIOM for {sample_name} already exists")
         if not exceptions:
-            self.log("INFO", f"kraken-biom completed for sample {sample_name} for all taxonomic levels\n")
+            self.log("INFO", f"kraken-biom completed for sample {sample_name} at all taxonomic levels\n")
+        elif length(exceptions) == 6:
+            self.log("ERROR", f"kraken-biom failed for sample {sample_name} at all taxonomic levels\n")
         else:
-            self.log("INFO", f"kraken-biom completed for sample {sample_name} for all taxonomic levels, except for {', '.join(exceptions)} levels\n")
+            self.log("INFO", f"kraken-biom completed for sample {sample_name} at all taxonomic levels, except for {', '.join(exceptions)} levels\n")
 
     def run_all(self):
         fastq_files = glob.glob(os.path.join(self.fastq_dir, "*.fastq*"))
