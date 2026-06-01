@@ -15,23 +15,23 @@ DESCRIPTION:
 MetNano runs a metagenomic analysis pipeline from FASTQ files obtained by Oxford Nanopore Technologies sequencing.
 
 USAGE:
-./MetNano -f [FASTQ_directory] -o [output_directory] -d [kraken2_database]
+./MetNano -f [FASTQ_dir] -o [output_dir] -d [kraken2_database]
 
 REQUIRED ARGUMENTS:
--f [FASTQ_directory] 	: Directory containing Nanopore FASTQ files
--o [output_directory]	: Path to the output directory where results will be stored
--d [kraken2_database]   : Database used by Kraken2
+-f [FASTQ_dir] 	        : Path to directory containing Nanopore FASTQ files
+-o [output_dir]	        : Path to the output directory where results will be stored
+-d [kraken2_database]   : Path to directory containing database used by Kraken2
 
 OPTIONAL ARGUMENTS:
 -u                      : Unzip raw FASTQs from MinKNOW folder output
 -r                      : Rename FASTQs using association file (-a)
 -a [association_file]  	: Path to the association file containing the barcode IDs and associated sample names (required if -r is provided)
--q [minQ]      		: Nanopore quality score filtering parameter used for chopper (default  = 15)
--l [minlength] 		: Nanopore sequence length filtering parameter used for chopper (default  = 300)
--H [headcrop]           : Trim N nucleotides from the start of a read (default: 0)
--T [tailcrop]           : Trim N nucleotides from the end of a read (default: 0)
--m [reference genome]	: FASTA file of host reference genome (default = none)
--c [confidence kraken2] : Confidence score used for Kraken2 (default = 0.1)
+-q [minQ]      		: minimum Phred average quality score with chopper (default  = 15)
+-l [minlength] 		: minimum read length with chopper (default  = 300)
+-H [headcrop]           : Trim N nucleotides from the start of a read with chopper (default: 0)
+-T [tailcrop]           : Trim N nucleotides from the end of a read with chopper (default: 0)
+-m [reference genome]	: Path to FASTA file of host reference genome (default = none)
+-c [confidence kraken2] : Confidence score used by Kraken2 (default = 0.1)
 -n [path_to_copy_db]    : Copy kraken2 database into temporay in-memory filesystem for use with --memore-mapping option in Kraken2. Typically use /dev/shm/ if available
 -R [min_read_threshold] : number of reads required PRIOR to abundance estimation with Bracken (default: 10)
 -s [step]               : Set the step after which MetNano will stop. Possible options are: QC (stops after nanoQC), filtering (stops after chopper), and complete (default = complete)
