@@ -382,7 +382,7 @@ class TaxonomicClassification:
     of taxa abundance with Bracken and the conversion of Kraken2-style reports into
     BIOM tables with kraken-biom.
     """
-    def __init__(self, db_path, fastq_dir, parameters, threads, confidence, minlength, memory_mapping):
+    def __init__(self, db_path, fastq_dir, parameters, threads, confidence, minlength, memory_mapping, min_read_threshold):
         self.db_path = db_path
         self.db_name = os.path.basename(os.path.normpath(self.db_path))
         self.fastq_dir = fastq_dir
@@ -397,6 +397,7 @@ class TaxonomicClassification:
         self.required_files = ["hash.k2d", "opts.k2d", "taxo.k2d"]
         self.bracken_dir = os.path.join(self.out_dir, "07-Bracken", self.parameters, self.db_name, self.confidence)
         self.krakenbiom_dir = os.path.join(self.out_dir, "08-kraken-biom", self.parameters, self.db_name, self.confidence)
+        self.min_read_threshold = min_read_threshold
 
     def log(self, kind, message):
         """Print formatted log message"""
@@ -505,7 +506,8 @@ class TaxonomicClassification:
                     f"-o {bracken_output} "
                     f"-w {bracken_report} "
                     f"-r {self.minlength} "
-                    f"-l {level_code}"
+                    f"-l {level_code} "
+                    f"-t {self.min_read_threshold}"
                 )
                 self.log("RUN", bracken_cmd)
                 try:

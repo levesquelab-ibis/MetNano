@@ -24,6 +24,7 @@ parser.add_argument("-u", "--unzip", help="unzip FASTQs.")
 parser.add_argument("-t", "--threads", help="number of threads.")
 parser.add_argument("-n", "--memory_mapping", help="Folder to copy Kraken2 database for --memory_mapping.")
 parser.add_argument("-s", "--step", help="Step after which MetNano will stop.")
+parser.add_argument("-R", "--min_read_threshold", help="Bracken minimum read threshold.")
 
 # Parse the arguments
 args = parser.parse_args()
@@ -45,6 +46,7 @@ unzip = args.unzip
 threads = args.threads
 memory_mapping = args.memory_mapping
 step = args.step
+min_read_threshold = args.min_read_threshold
 
 print("# Starting MetNano with the following parameters:", flush=True)
 
@@ -63,6 +65,7 @@ print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Reference
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Kraken2 confidence score: {confidence}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Kraken2 database: {database}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Kraken2 memory mapping: {memory_mapping}")
+print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Bracken minimum read threshold: {min_read_threshold}")
 total_cpus = os.process_cpu_count()
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Number of available CPUs: {total_cpus}")
 print(f"{datetime.now().isoformat(sep=' ', timespec='seconds')} [INFO] Number of specified threads: {threads}")
@@ -92,7 +95,8 @@ classified = TaxonomicClassification(
     threads,
     confidence,
     minlength,
-    memory_mapping
+    memory_mapping,
+    min_read_threshold
 )
 
 classified.run_all()

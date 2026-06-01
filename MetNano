@@ -12,7 +12,7 @@ USAGE='
 -----------------------------------------
 
 DESCRIPTION:
-MetNano runs a metagenomic analysis pipeline from FASTQ files obtained by Oxford Nanopore sequencing.
+MetNano runs a metagenomic analysis pipeline from FASTQ files obtained by Oxford Nanopore Technologies sequencing.
 
 USAGE:
 ./MetNano -f [FASTQ_directory] -o [output_directory] -d [kraken2_database]
@@ -33,6 +33,7 @@ OPTIONAL ARGUMENTS:
 -m [reference genome]	: FASTA file of host reference genome (default = none)
 -c [confidence kraken2] : Confidence score used for Kraken2 (default = 0.1)
 -n [path_to_copy_db]    : Copy kraken2 database into temporay in-memory filesystem for use with --memore-mapping option in Kraken2. Typically use /dev/shm/ if available
+-R [min_read_threshold] : number of reads required PRIOR to abundance estimation with Bracken (default: 10)
 -s [step]               : Set the step after which MetNano will stop. Possible options are: QC (stops after nanoQC), filtering (stops after chopper), and complete (default = complete)
 -t [INT]                : Number of threads (default = 2)
 
@@ -47,7 +48,7 @@ usage() {
 }
 
 # Parse arguments using getopts
-while getopts "a:o:f:q:l:H:T:d:c:m:s:t:n:ruh" opt; do
+while getopts "a:o:f:q:l:H:T:d:c:m:R:s:t:n:ruh" opt; do
   case $opt in
     a) association_file="$OPTARG" ;;
     o) output_dir="$OPTARG" ;;
@@ -60,6 +61,7 @@ while getopts "a:o:f:q:l:H:T:d:c:m:s:t:n:ruh" opt; do
     c) confidence="$OPTARG" ;;
     m) reference_genome="$OPTARG" ;;
     n) memory_mapping="$OPTARG" ;;
+    R) min_read_threshold="$OPTARG" ;;
     s) step="$OPTARG" ;;
     t) threads="$OPTARG" ;;
     r) rename="True" ;;
@@ -133,6 +135,11 @@ if [[ -z $memory_mapping ]]
     memory_mapping="False"
 fi
 
+if [[ -z $min_read_threshold ]]
+  then
+    min_read_threshold=10
+fi
+
 if [[ -z $threads ]]
   then
     threads=2
@@ -188,4 +195,5 @@ python3 $DIR/src/run_container_metnano.py \
   -t $threads \
   -n $memory_mapping \
   -o $output_dir \
-  -s $step
+  -s $step \
+  -R $min_read_threshold
