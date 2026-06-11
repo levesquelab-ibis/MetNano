@@ -53,8 +53,6 @@ OPTIONAL ARGUMENTS:
 -R [min_read_threshold] : number of reads required PRIOR to abundance estimation with Bracken (default: 10)
 -s [step]               : Set the step after which MetNano will stop. Possible options are: QC (stops after nanoQC), filtering (stops after chopper), and complete (default = complete)
 -t [INT]                : Number of threads (default = 2)
-
-ADDITIONAL OPTIONS:
 -h                	     : Display this help message and exit
 ```
 - If the `-u` argument is provided, `MetNano` expects as input FASTQ directory (`-f`) the default output directory from MinKNOW for barcoded samples. See the "**Input FASTQs**" section for more information
