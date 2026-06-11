@@ -53,7 +53,7 @@ OPTIONAL ARGUMENTS:
 -R [min_read_threshold] : number of reads required PRIOR to abundance estimation with Bracken (default: 10)
 -s [step]               : Set the step after which MetNano will stop. Possible options are: QC (stops after nanoQC), filtering (stops after chopper), and complete (default = complete)
 -t [INT]                : Number of threads (default = 2)
--h                	     : Display this help message and exit
+-h                	    : Display this help message and exit
 ```
 - If the `-u` argument is provided, `MetNano` expects as input FASTQ directory (`-f`) the default output directory from MinKNOW for barcoded samples. See the "**Input FASTQs**" section for more information
 - If the `-r` argument is provided, `MetNano` will rename the FASTQ files provided with `-f` using the association file provided with `-a`. The association file must be a TAB-delimited file with the first column being the FASTQ file name without extensions and the second column being the new names to give to the FASTQs. Using the example association file below, `barcode01.fastq` would be renamed `sample14.fastq`.
