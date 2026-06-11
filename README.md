@@ -21,12 +21,12 @@
 `MetNano` and all of its dependencies will be available on bioconda. In the meantime, it is possible to build and use a `MetNano` conda environment with the following commands:
 ```
 # Create dedicated MetNano environment
-conda create -n metnano_test
-conda activate metnano_test
+conda create -n metnano
+conda activate metnano
 
 # Install MetNano from conda recipe
 conda build -c conda-forge -c bioconda conda_recipe_MetNano/
-conda install --use-local metnano_test -c conda-forge -c bioconda
+conda install --use-local metnano -c conda-forge -c bioconda
 ```
 The conda recipe to build `MetNano` will be distributed with the software until available on bioconda.
 
