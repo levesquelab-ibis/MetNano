@@ -280,6 +280,21 @@ class Preprocessing:
                 input_fq = os.path.join(self.chopper_dir,sample + "_trimmed.fastq")
             else:
                 input_fq = os.path.join(self.minimap2_dir, sample + "_unmapped.fastq")
+            rmdup_fastq = os.path.join(self.seqkit_dir, sample + "_rmdup.fastq")
+            if not os.path.isfile(rmdup_fastq) or os.path.getsize(rmdup_fastq) == 0:
+                self.log("INFO", f"Removing duplicate reads for {sample}...")
+                seqkit_cmd = (
+                    f"seqkit rmdup "
+                    f"-j {self.threads_per_task} "
+                    f"-n "
+                    f"{input_fq} "
+                    f"-o {rmdup_fastq}"
+                )
+                self.log("RUN", f"{seqkit_cmd}")
+                subprocess.run(seqkit_cmd, shell=True, check=True)
+                self.log("INFO", f"Duplicate reads removed for {sample}")
+            else:
+                self.log("INFO", f"Deduplicated file already exists for {sample}")
             segmented_fastq = os.path.join(self.seqkit_dir, sample + "_segmented.fastq")
             if not os.path.isfile(segmented_fastq) or os.path.getsize(segmented_fastq) == 0:
                 self.log("INFO", f"Segmenting reads for {sample}...")
@@ -287,7 +302,7 @@ class Preprocessing:
                     f"seqkit sliding "
                     f"-W {self.minlength} "
                     f"-s {self.minlength} "
-                    f"{input_fq} "
+                    f"{rmdup_fastq} "
                     f"> {segmented_fastq}"
                 )
                 self.log("RUN", f"{seqkit_cmd}")
@@ -571,7 +586,7 @@ class TaxonomicClassification:
             self.log("INFO", f"kraken-biom completed for sample {sample_name} at all taxonomic levels, except for {', '.join(exceptions)} levels\n")
 
     def run_all(self):
-        fastq_files = glob.glob(os.path.join(self.fastq_dir, "*.fastq*"))
+        fastq_files = glob.glob(os.path.join(self.fastq_dir, "*_segmented.fastq*"))
         if not fastq_files:
             self.log("ERROR", "No FASTQ files found.")
             self.log("END", "Exiting MetNano")
