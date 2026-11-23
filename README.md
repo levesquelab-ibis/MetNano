@@ -56,7 +56,7 @@ OPTIONAL ARGUMENTS:
 -h                	    : Display this help message and exit
 ```
 - If the `-u` argument is provided, `MetNano` expects as input FASTQ directory (`-f`) the default output directory from MinKNOW for barcoded samples. See the "**Input FASTQs**" section for more information
-- If the `-r` argument is provided, `MetNano` will rename the FASTQ files provided with `-f` using the association file provided with `-a`. The association file must be a TAB-delimited file with the first column being the FASTQ file name without extensions and the second column being the new names to give to the FASTQs. Using the example association file below, `barcode01.fastq` would be renamed `sample14.fastq`.
+- If the `-r` argument is provided, `MetNano` will rename the FASTQ files provided with `-f` using the association file provided with `-a`. The association file must be a TAB-delimited file with the first column being the FASTQ file name without extensions and the second column being the new names to give to the FASTQs. Using the example association file below, `barcode01.fastq` would be renamed `sample14.fastq`. Make sure that there is no empty lines in the association file.
 ```
 barcode01 sample14
 barcode02 sample52
